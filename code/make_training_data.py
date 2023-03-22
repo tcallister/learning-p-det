@@ -12,12 +12,12 @@ injection_data = h5py.File('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5','r')
 injectionData = pd.DataFrame()
 injectionData['m1_detector'] = np.array(injection_data['injections']['mass1'][()],dtype='float64')
 injectionData['m2_detector'] = np.array(injection_data['injections']['mass2'][()],dtype='float64')
-injectionData['dist'] = injection_data['injections']['distance'][()]/1000.
-injectionData['cos_inc'] = np.cos(injection_data['injections']['inclination'])
-injectionData['ra'] = injection_data['injections']['right_ascension']
-injectionData['dec'] = injection_data['injections']['declination']
-injectionData['pol'] = injection_data['injections']['polarization']
-injectionData['z'] = injection_data['injections']['redshift'][()]
+injectionData['distance'] = injection_data['injections']['distance'][()]/1000.
+injectionData['cos_inclination'] = np.cos(injection_data['injections']['inclination'])
+injectionData['right_ascension'] = injection_data['injections']['right_ascension']
+injectionData['declination'] = injection_data['injections']['declination']
+injectionData['polarization'] = injection_data['injections']['polarization']
+injectionData['redshift'] = injection_data['injections']['redshift'][()]
 
 # Some derived mass parameters
 injectionData['q'] = injectionData.m2_detector/injectionData.m1_detector
