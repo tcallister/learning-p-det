@@ -30,4 +30,4 @@ hopeless_params = hopeless_params[['m1_detector','m2_detector','distance',
                 'Xeff','Xdiff','Xp_gen']]
 hopeless_params['detected'] = 0
 
-hopeless_params.to_hdf('./../data/hopeless.hdf','hopeless')
+hopeless_params.to_hdf('./../data/hopeless_02.hdf','hopeless')
