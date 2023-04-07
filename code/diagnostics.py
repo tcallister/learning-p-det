@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.interpolate import UnivariateSpline
+from astropy.cosmology import Planck15,z_at_value
+import astropy.units as u
 
 def get_pp_data(predicted_probabilities,detection_labels):
     
@@ -49,3 +51,120 @@ def get_pp_data_discrete(predicted_probabilities,detection_labels,p_grid=np.lins
     grid_errors = np.sqrt(p_grid_centers*(1.-p_grid_centers)/dN_grid)
     
     return p_grid_centers,dC_dN_grid,grid_errors
+
+def check_mass(ann,parameter_transform):
+
+    """
+    Function to check predicted detection probabilities as a function of mass
+
+    Parameters
+    ----------
+    ann : `keras.engine.sequential.Sequential`
+        Neural network with which to evaluate detection probabilities
+    parameter_transform : `func`
+        Function that transforms the tuple (m1_det,m2_det,DL,a1,a2,cost1,cost2,cos_inc,ra,sin_dec,pol)
+        into parameter space accepted by `ann`
+
+    Returns
+    -------
+    masses : `list`
+        List of mass values
+    p_masses : `list`
+        Detection probabilites at `masses`
+    """
+
+    masses = np.linspace(2,100,100)
+    dist = 1.
+    z = z_at_value(Planck15.luminosity_distance,dist*u.Gpc).value
+    
+    param_vec = np.array([masses*(1.+z),
+                          masses*(1.+z),
+                          dist*np.ones_like(masses),
+                          np.ones_like(masses),
+                          np.ones_like(masses),
+                          np.ones_like(masses),
+                          np.ones_like(masses),
+                          0.5*np.ones_like(masses),
+                          1.73*np.ones_like(masses),
+                          -0.2*np.ones_like(masses),
+                          0.9*np.ones_like(masses)])
+    
+    p_masses = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    return masses,p_masses
+
+def check_distance(ann,parameter_transform):
+
+    dists = np.linspace(0.1,20,100)
+    zs = z_at_value(Planck15.luminosity_distance,15*u.Gpc).value
+    
+    param_vec = np.array([5.*(1.+zs)*np.ones_like(dists),
+                          5.*(1.+zs)*np.ones_like(dists),
+                          dists,
+                          np.ones_like(dists),
+                          np.ones_like(dists),
+                          np.ones_like(dists),
+                          np.ones_like(dists),
+                          0.5*np.ones_like(dists),
+                          1.73*np.ones_like(dists),
+                          -0.2*np.ones_like(dists),
+                          0.9*np.ones_like(dists)])
+    
+    p_dists = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    return dists,p_dists
+
+def check_Xeff_via_costs(ann,parameter_transform,m1=30,m2=30):
+
+    cos_tilts = np.linspace(-1,1,100)
+    
+    param_vec = np.array([m1*np.ones_like(cos_tilts),
+                          m2*np.ones_like(cos_tilts),
+                          1.*np.ones_like(cos_tilts),
+                          np.ones_like(cos_tilts),
+                          np.ones_like(cos_tilts),
+                          cos_tilts,
+                          cos_tilts,
+                          0.5*np.ones_like(cos_tilts),
+                          1.73*np.ones_like(cos_tilts),
+                          -0.2*np.ones_like(cos_tilts),
+                          0.9*np.ones_like(cos_tilts)])
+    
+    p_cos_tilts = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    return cos_tilts,p_cos_tilts
+
+def check_Xeff_via_szs(ann,parameter_transform,m1=30,m2=30):
+
+    szs = np.linspace(-1,1,100)
+    
+    param_vec = np.array([m1*np.ones_like(szs),
+                          m2*np.ones_like(szs),
+                          1.*np.ones_like(szs),
+                          np.abs(szs),
+                          np.abs(szs),
+                          np.sign(szs),
+                          np.sign(szs),
+                          0.5*np.ones_like(szs),
+                          1.73*np.ones_like(szs),
+                          -0.2*np.ones_like(szs),
+                          0.9*np.ones_like(szs)])
+    
+    ps = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    return szs,ps
+
+def check_in_plane_spin(ann,parameter_transform,m1=30,m2=30):
+
+    spin_mags = np.linspace(0,1,100)
+    
+    param_vec = np.array([m1*np.ones_like(spin_mags),
+                          m2*np.ones_like(spin_mags),
+                          1.*np.ones_like(spin_mags),
+                          spin_mags,
+                          np.zeros_like(spin_mags),
+                          np.zeros_like(spin_mags),
+                          np.zeros_like(spin_mags),
+                          0.5*np.ones_like(spin_mags),
+                          1.73*np.ones_like(spin_mags),
+                          -0.2*np.ones_like(spin_mags),
+                          0.9*np.ones_like(spin_mags)])
+    
+    ps = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    return spin_mags,ps
