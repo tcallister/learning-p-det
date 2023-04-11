@@ -22,6 +22,7 @@ def generalized_Xp(s1x,s1y,s2x,s2y,q):
         x-component of the secondary's spin
     s2y : `float` or `np.array`
         y-component of the secondary's spin
+    q : `float` or `np.array`
 
     Returns
     -------
@@ -43,26 +44,54 @@ def generalized_Xp(s1x,s1y,s2x,s2y,q):
 
 def draw_params():
 
+    """
+    Helper function to randomly draw sets of CBC parameters.
+    Used by `draw_hopeless()` below to generate additional undetectable CBCs
+    to assist in neural network training.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    paramDict : `dict`
+        Dictionary containing randomly drawn component masses, Cartesian spins, sky position,
+        source orientation, distance, and time. Note that the provided masses are in the *detector frame*.
+    """
+
+    # Draw random masses between 2,102 Msun
     mA = 100.*np.random.random()+2.
     mB = 100.*np.random.random()+2.
+
+    # Random distance
+    # Note that we deliberately choose a random distance, rather than following a uniform-in-volume prior,
+    # in order to provide training points across a range of distances. Following a uniform-in-volume distribution
+    # is clearly more astrophysically realistic, but will result in very few training puts being placed at small
+    # and intermediate distances
     DL = 15e3*np.random.random()
+    z = z_at_value(Planck15.luminosity_distance,DL*u.Mpc).value
+
+    # Isotropic spins
     a1 = np.random.random()
     a2 = np.random.random()
     cost1 = 2.*np.random.random()-1.
     cost2 = 2.*np.random.random()-1.
     phi1 = 2.*np.pi*np.random.random()
     phi2 = 2.*np.pi*np.random.random()
+
+    # Isotropic sky position and orientation
     cos_inc = 2.*np.random.random()-1.
     ra = 2.*np.pi*np.random.random()
     sin_dec = 2.*np.random.random()-1.
     pol = 2.*np.pi*np.random.random()
 
-    z = z_at_value(Planck15.luminosity_distance,DL*u.Mpc).value
-
+    # Get a random time across O3
     O3_start = 1238166018
     O3_end = 1269363618
     time = np.random.random()*(O3_end-O3_start) + O3_start
 
+    # Package it all in a dictionary and return
     paramDict = {'mass1':max(mA,mB)*(1.+z),
                 'mass2':min(mA,mB)*(1.+z),
                 'distance':DL,
@@ -83,6 +112,27 @@ def draw_params():
 
 def get_snr(paramDict,H_psd,L_psd):
 
+    """
+    Function to compute the expected SNR of a BBH in O3.
+    Used in conjunction with `draw_hopeless()` defined below to generate additional hopeless injections
+    to assist in neural network training.
+
+    Parameters
+    ----------
+    paramDict : `dict`
+        Dictionary of BBH parameters, as produced by `draw_params()`.
+    H_psd : `pycbc.types.frequencyseries.FrequencySeries`
+        Frequency series representing H1 O3 PSD
+    L_psd : `pycbc.types.frequencyseries.FrequencySeries`
+        Frequency series representing L1 O3 PSD
+        
+    Returns
+    -------
+    snr : `float`
+        H1L1 network SNR expected from the given set of BBH parameters
+    """
+
+    # Generate waveform
     delta_f=1./16.
     sptilde, sctilde = waveform.get_fd_waveform(approximant="IMRPhenomPv2",
                                                 template=paramDict,
@@ -98,6 +148,7 @@ def get_snr(paramDict,H_psd,L_psd):
     h_L1 = Flp*sptilde + Flc*sctilde
 
     # Interpolate PSDs
+    # If PSD extends to higher frequencies than the GW signal, trim as necessary
     psd_H1_interpolated = psd.interpolate(H_psd,h_H1.delta_f)
     if len(psd_H1_interpolated)>len(h_H1):
         psd_H1_interpolated = psd.interpolate(H_psd,h_H1.delta_f)[:len(h_H1)]
@@ -114,24 +165,51 @@ def get_snr(paramDict,H_psd,L_psd):
         psd_L1_interpolated_tmp[0:len(psd_L1_interpolated)] = psd_L1_interpolated
         psd_L1_interpolated = psd_L1_interpolated_tmp
 
+    # Compute detector SNRs and add in quadrature
+    # Note that PSDs are reported as identically zero in regions where they are in fact undefined,
+    # so cut on frequencies at which PSDs are above zero
     snr_H1_sq = 4.*h_H1.delta_f*np.sum(np.array(np.abs(h_H1)**2/psd_H1_interpolated)[psd_H1_interpolated[()]>0.])
     snr_L1_sq = 4.*h_L1.delta_f*np.sum(np.array(np.abs(h_L1)**2/psd_L1_interpolated)[psd_L1_interpolated[()]>0.])
     return np.sqrt(snr_H1_sq + snr_L1_sq)
 
 def draw_hopeless(nDraws):
 
+    """
+    Function to randomly draw hopeless BBHs, for use in neural network training.
+
+    Parameters
+    ----------
+    nDraws : `int`
+        Desired number of hopeless injections
+
+    Returns
+    -------
+    hopeless_params : `list`
+        List of BBH parameters (each of which is a dictionary as return by `draw_params()`) that correspond
+        to "undetectable" events, with expected network SNRs below 4.
+    findable_params : `list`
+        The complement of `hopeless_params`, containing events with expected network SNRs above 4.
+    """
+
+    # Load representative PSDs
     psd_delta_f = 1./256
     psd_length = int(4096./psd_delta_f)
     psd_low_frequency_cutoff = 20.
-    H_psd = psd.from_txt("./../input/H1-AVERAGE_PSD-1241560818-28800.txt",psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
-    L_psd = psd.from_txt("./../input/L1-AVERAGE_PSD-1241560818-28800.txt",psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
+    H_psd = psd.from_txt("./../input/H1-AVERAGE_PSD-1241560818-28800.txt",
+                            psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
+    L_psd = psd.from_txt("./../input/L1-AVERAGE_PSD-1241560818-28800.txt",
+                            psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
 
+    # Instantiate variables to count and store hopeless/findable events
     n_hopeless = 0
     n_trials = 0
     hopeless_params = []
     findable_params = []
+
+    # Repeat until we reach the desired number of hopeless injections
     while n_hopeless<nDraws:
 
+        # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
         params = draw_params()
         snr = get_snr(params,H_psd,L_psd)
@@ -147,4 +225,36 @@ def draw_hopeless(nDraws):
             
     return hopeless_params,findable_params
 
-#draw_hopeless()
+class ANNaverage():
+
+    """
+    Class used as a wrapper around a list of individually-trained neural networks.
+    Used to average the predictions across these individual networks to increase overall accuracy.
+    """
+    
+    def __init__(self,ann_list):
+
+        # List of `tf.keras.models.Sequential` neural networks
+        self.ann_list = ann_list
+        
+    def predict(self,params,*args,**kwargs):
+
+        """
+        Function to compute predictions across the elements of `self.ann_list` and return their average.
+
+        Parameters
+        ----------
+        params : `list`
+            Input parameters at which to predict outputs
+
+        Returns
+        -------
+        mean_predictions : `list`
+            Mean predictions, taken across `self.ann_list`
+        """
+
+        # Compute list of predictions from individual networks, passing any additional arguments
+        individual_predictions = [ann.predict(params,*args,**kwargs) for ann in self.ann_list]
+
+        # Compute and return mean!
+        return np.mean(individual_predictions,axis=0)
