@@ -89,7 +89,7 @@ def check_mass(ann,parameter_transform):
                           -0.2*np.ones_like(masses),
                           0.9*np.ones_like(masses)])
     
-    p_masses = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    p_masses = ann.predict(parameter_transform(*param_vec),verbose=0).reshape(-1)
     return masses,p_masses
 
 def check_distance(ann,parameter_transform):
@@ -109,7 +109,7 @@ def check_distance(ann,parameter_transform):
                           -0.2*np.ones_like(dists),
                           0.9*np.ones_like(dists)])
     
-    p_dists = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    p_dists = ann.predict(parameter_transform(*param_vec),verbose=0).reshape(-1)
     return dists,p_dists
 
 def check_Xeff_via_costs(ann,parameter_transform,m1=30,m2=30):
@@ -128,7 +128,7 @@ def check_Xeff_via_costs(ann,parameter_transform,m1=30,m2=30):
                           -0.2*np.ones_like(cos_tilts),
                           0.9*np.ones_like(cos_tilts)])
     
-    p_cos_tilts = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    p_cos_tilts = ann.predict(parameter_transform(*param_vec),verbose=0).reshape(-1)
     return cos_tilts,p_cos_tilts
 
 def check_Xeff_via_szs(ann,parameter_transform,m1=30,m2=30):
@@ -147,7 +147,7 @@ def check_Xeff_via_szs(ann,parameter_transform,m1=30,m2=30):
                           -0.2*np.ones_like(szs),
                           0.9*np.ones_like(szs)])
     
-    ps = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    ps = ann.predict(parameter_transform(*param_vec),verbose=0).reshape(-1)
     return szs,ps
 
 def check_in_plane_spin(ann,parameter_transform,m1=30,m2=30):
@@ -166,5 +166,5 @@ def check_in_plane_spin(ann,parameter_transform,m1=30,m2=30):
                           -0.2*np.ones_like(spin_mags),
                           0.9*np.ones_like(spin_mags)])
     
-    ps = ann.predict(parameter_transform(*param_vec)).reshape(-1)
+    ps = ann.predict(parameter_transform(*param_vec),verbose=0).reshape(-1)
     return spin_mags,ps
