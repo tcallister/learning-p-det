@@ -1,4 +1,5 @@
 import tensorflow as tf
+tf.keras.backend.set_floatx('float64')
 from tensorflow.keras import initializers
 
 class negativeLogLikelihood(tf.keras.losses.Loss):
@@ -11,6 +12,10 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         super().__init__()
 
     def call(self, y_true, y_pred):
+
+        ceil = tf.ones_like(y_pred)*(1.-1e-9)
+        y_pred = tf.where(y_pred>1.-1e-9,ceil,y_pred)
+
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
         return -tf.math.reduce_mean(log_ps)
 

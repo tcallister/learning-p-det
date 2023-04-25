@@ -42,7 +42,7 @@ def generalized_Xp(s1x,s1y,s2x,s2y,q):
 
     return Xp
 
-def draw_params():
+def draw_params(DL_max=15e3):
 
     """
     Helper function to randomly draw sets of CBC parameters.
@@ -69,7 +69,7 @@ def draw_params():
     # in order to provide training points across a range of distances. Following a uniform-in-volume distribution
     # is clearly more astrophysically realistic, but will result in very few training puts being placed at small
     # and intermediate distances
-    DL = 15e3*np.random.random()
+    DL = DL_max*np.random.random()
     z = z_at_value(Planck15.luminosity_distance,DL*u.Mpc).value
 
     # Isotropic spins
@@ -110,7 +110,7 @@ def draw_params():
 
     return paramDict
 
-def get_snr(paramDict,H_psd,L_psd):
+def get_snrs(paramDict,H_psd,L_psd):
 
     """
     Function to compute the expected SNR of a BBH in O3.
@@ -170,7 +170,7 @@ def get_snr(paramDict,H_psd,L_psd):
     # so cut on frequencies at which PSDs are above zero
     snr_H1_sq = 4.*h_H1.delta_f*np.sum(np.array(np.abs(h_H1)**2/psd_H1_interpolated)[psd_H1_interpolated[()]>0.])
     snr_L1_sq = 4.*h_L1.delta_f*np.sum(np.array(np.abs(h_L1)**2/psd_L1_interpolated)[psd_L1_interpolated[()]>0.])
-    return np.sqrt(snr_H1_sq + snr_L1_sq)
+    return snr_H1_sq,snr_L1_sq
 
 def draw_hopeless(nDraws):
 
@@ -212,7 +212,8 @@ def draw_hopeless(nDraws):
         # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
         params = draw_params()
-        snr = get_snr(params,H_psd,L_psd)
+        H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
+        snr = np.sqrt(H1_snr**2 + L1_snr**2)
         if snr<=4:
             n_hopeless+=1
             hopeless_params.append(params)
@@ -224,6 +225,39 @@ def draw_hopeless(nDraws):
             findable_params.append(params)
             
     return hopeless_params,findable_params
+
+def draw_certain(nDraws):
+
+    # Load representative PSDs
+    psd_delta_f = 1./256
+    psd_length = int(4096./psd_delta_f)
+    psd_low_frequency_cutoff = 20.
+    H_psd = psd.from_txt("./../input/H1-AVERAGE_PSD-1241560818-28800.txt",
+                            psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
+    L_psd = psd.from_txt("./../input/L1-AVERAGE_PSD-1241560818-28800.txt",
+                            psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
+
+    # Instantiate variables to count and store hopeless/findable events
+    n_certain = 0
+    n_trials = 0
+    certain_params = []
+
+    # Repeat until we reach the desired number of hopeless injections
+    while n_certain<nDraws:
+
+        # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
+        n_trials+=1
+        params = draw_params(DL_max=200)
+        H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
+
+        if min(H1_snr,L1_snr)>=100:
+            n_certain+=1
+            certain_params.append(params)
+
+            if n_certain%10==0:
+                print(n_certain,n_trials)
+
+    return certain_params
 
 class ANNaverage():
 
