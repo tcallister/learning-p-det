@@ -5,6 +5,7 @@ sys.path.append('./../code/')
 from training_routines import *
 from diagnostics import *
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import shuffle
 import tensorflow as tf
 tf.keras.backend.set_floatx('float64')
 import matplotlib.pyplot as plt
