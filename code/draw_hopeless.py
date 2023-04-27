@@ -3,7 +3,7 @@ import pandas as pd
 from drawing_injections import *
 from utilities import *
 
-hopeless,findable = draw_hopeless(20000)
+hopeless,findable = draw_hopeless(50)
 
 hopeless_params = pd.DataFrame(hopeless)
 hopeless_params['distance'] = hopeless_params.distance/1000.  # Convert from Mpc to Gpc

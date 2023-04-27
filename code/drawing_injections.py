@@ -194,7 +194,7 @@ def draw_hopeless(nDraws):
 
         # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
-        params = draw_params()
+        params = draw_params(dist='injected')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
         snr = np.sqrt(H1_snr**2 + L1_snr**2)
         if snr<=4:
