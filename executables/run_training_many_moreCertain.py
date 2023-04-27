@@ -24,7 +24,7 @@ def input_output(data):
     return input_data,output_data
 
 def new_scheduler(epoch, lr):
-    if epoch%10==0 and epoch:
+    if epoch%20==0 and epoch:
         return lr*tf.math.exp(-1.0)
     else:
         return lr
@@ -33,7 +33,7 @@ def run_training(output):
 
     train_data = pd.read_hdf('./../data/training_data.hdf')
     val_data = pd.read_hdf('./../data/validation_data.hdf')
-    certain_data = pd.read_hdf('./../data/certain.hdf')
+    certain_data = pd.read_hdf('./../data/certain.hdf').iloc[:3000]
     train_data = shuffle(certain_data.append(train_data))
 
     addDerived(train_data)
@@ -56,7 +56,7 @@ def run_training(output):
     history = ann.fit(train_input_scaled,
                       train_output,
                       batch_size = 8,
-                      epochs = 50,
+                      epochs = 100,
                       validation_data = (val_input_scaled,val_output),
                       callbacks=callbacks,
                       verbose=0)
