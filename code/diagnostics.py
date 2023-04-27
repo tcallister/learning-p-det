@@ -30,22 +30,51 @@ def get_pp_data(predicted_probabilities,detection_labels):
     return probabilities_sorted,p_measured,error
 
 def get_pp_data_discrete(predicted_probabilities,detection_labels,p_grid=np.linspace(0,1,100)):
+
+    """
+    Helper function to compute data for a PP plot evaluating neural network prediction quality.
+
+    Parameters
+    ----------
+    predicted_probabilities : `array`
+        List of P_det predictions from our neural network emulator
+    detection_labels : `array`
+        Actual missed/found labels assigned to injections
+    p_grid : `array`
+        Array defining edges of bins into which we will sort PP-plot data
+
+    Returns
+    -------
+    p_grid_centers : `array`
+        List of length len(p_grid)-1 marking bins of predicted P_det values
+    dC_dN_grid : `array`
+        Actual fractions of injections in each bin that are detected
+    grid_errors : `array`
+        Expected standard deviation on detection fractions, given finite sampling
+    """
     
+    # Sort predicted probabilities, in preparation for binning
     sorting = np.argsort(predicted_probabilities)
-    
+
+    # Apply sorting and count the cumulative number of detections and trials,
+    # as we look from the lowest to the highest predicted probabilities
     probabilities_sorted = predicted_probabilities[sorting]
     detection_labels_sorted = detection_labels[sorting]
     cumulative_detections = np.cumsum(detection_labels_sorted)
     cumulative_trials = np.arange(cumulative_detections.size)
     
+    # Interpolate cumulative counts onto a uniform grid
     cumulative_N_grid = np.interp(p_grid,probabilities_sorted,cumulative_trials)
     cumulative_C_grid = np.interp(p_grid,probabilities_sorted,cumulative_detections)
 
+    # The fraction of events seen is the ratio between dN_dp, the number of trials per unit p,
+    # and dC_dp, the change in cumulative detections per unit p
     dN_dp_grid = np.diff(cumulative_N_grid)/np.diff(p_grid)
     dN_grid = np.diff(cumulative_N_grid)
     dC_dp_grid = np.diff(cumulative_C_grid)/np.diff(p_grid)
     dC_dN_grid = np.diff(cumulative_C_grid)/np.diff(cumulative_N_grid)
 
+    # Compute bin centers and expected errors
     p_grid_centers = (p_grid[1:] + p_grid[:-1])/2.
     dp = np.diff(p_grid_centers)[0]
     grid_errors = np.sqrt(p_grid_centers*(1.-p_grid_centers)/dN_grid)
@@ -94,6 +123,25 @@ def check_mass(ann,parameter_transform):
 
 def check_distance(ann,parameter_transform):
 
+    """
+    Function to check predicted detection probabilities as a function of luminosity distance
+
+    Parameters
+    ----------
+    ann : `keras.engine.sequential.Sequential`
+        Neural network with which to evaluate detection probabilities
+    parameter_transform : `func`
+        Function that transforms the tuple (m1_det,m2_det,DL,a1,a2,cost1,cost2,cos_inc,ra,sin_dec,pol)
+        into parameter space accepted by `ann`
+
+    Returns
+    -------
+    dists : `list`
+        List of luminosity distance values
+    p_dists : `list`
+        Detection probabilites at `dists`
+    """
+
     dists = np.linspace(0.1,20,100)
     zs = z_at_value(Planck15.luminosity_distance,15*u.Gpc).value
     
@@ -114,6 +162,30 @@ def check_distance(ann,parameter_transform):
 
 def check_Xeff_via_costs(ann,parameter_transform,m1=30,m2=30):
 
+    """
+    Function to check predicted detection probabilities as a function of chi-effective, via
+    varying cosine-tilt angles at fixed spin magnitude
+
+    Parameters
+    ----------
+    ann : `keras.engine.sequential.Sequential`
+        Neural network with which to evaluate detection probabilities
+    parameter_transform : `func`
+        Function that transforms the tuple (m1_det,m2_det,DL,a1,a2,cost1,cost2,cos_inc,ra,sin_dec,pol)
+        into parameter space accepted by `ann`
+    m1 : `float`
+        Primary mass at which to fix trials (default 30)
+    m2 : `float`
+        Secondary mass at which to fix trials (default 30)
+
+    Returns
+    -------
+    cos_tilts : `list`
+        List of cosine_tilt values
+    p_cos_tilts : `list`
+        Detection probabilites at `cos_tilts`
+    """
+
     cos_tilts = np.linspace(-1,1,100)
     
     param_vec = np.array([m1*np.ones_like(cos_tilts),
@@ -133,6 +205,30 @@ def check_Xeff_via_costs(ann,parameter_transform,m1=30,m2=30):
 
 def check_Xeff_via_szs(ann,parameter_transform,m1=30,m2=30):
 
+    """
+    Function to check predicted detection probabilities as a function of chi-effective, via
+    varying aligned spin amplitudes
+
+    Parameters
+    ----------
+    ann : `keras.engine.sequential.Sequential`
+        Neural network with which to evaluate detection probabilities
+    parameter_transform : `func`
+        Function that transforms the tuple (m1_det,m2_det,DL,a1,a2,cost1,cost2,cos_inc,ra,sin_dec,pol)
+        into parameter space accepted by `ann`
+    m1 : `float`
+        Primary mass at which to fix trials (default 30)
+    m2 : `float`
+        Secondary mass at which to fix trials (default 30)
+
+    Returns
+    -------
+    szs : `list`
+        List of cartesian z-components of spins
+    p_szs : `list`
+        Detection probabilites at `szs`
+    """
+
     szs = np.linspace(-1,1,100)
     
     param_vec = np.array([m1*np.ones_like(szs),
@@ -151,6 +247,29 @@ def check_Xeff_via_szs(ann,parameter_transform,m1=30,m2=30):
     return szs,ps
 
 def check_in_plane_spin(ann,parameter_transform,m1=30,m2=30):
+
+    """
+    Function to check predicted detection probabilities as a function of in-plane component spin magnitudes 
+
+    Parameters
+    ----------
+    ann : `keras.engine.sequential.Sequential`
+        Neural network with which to evaluate detection probabilities
+    parameter_transform : `func`
+        Function that transforms the tuple (m1_det,m2_det,DL,a1,a2,cost1,cost2,cos_inc,ra,sin_dec,pol)
+        into parameter space accepted by `ann`
+    m1 : `float`
+        Primary mass at which to fix trials (default 30)
+    m2 : `float`
+        Secondary mass at which to fix trials (default 30)
+
+    Returns
+    -------
+    sps : `list`
+        List of in-plane spin magnitudes
+    p_sps : `list`
+        Detection probabilites at `sps`
+    """
 
     spin_mags = np.linspace(0,1,100)
     

@@ -13,8 +13,8 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
 
-        ceil = tf.ones_like(y_pred)*(1.-1e-9)
-        y_pred = tf.where(y_pred>1.-1e-9,ceil,y_pred)
+        ceil = tf.ones_like(y_pred)*(1.-1e-6)
+        y_pred = tf.where(y_pred>1.-1e-6,ceil,y_pred)
 
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
         return -tf.math.reduce_mean(log_ps)

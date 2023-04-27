@@ -5,10 +5,10 @@
 #SBATCH --output=logs/log_%A_%a.out
 #SBATCH --error=logs/log_%A_%a.err
 #SBATCH --array=0-99
-#SBATCH --time=01:00:00
+#SBATCH --time=02:00:00
 #SBATCH --partition=kicp
 #SBATCH --ntasks=1
-#SBATCH --mem=2G
+#SBATCH --mem=4G
 
 # Print the task id.
 echo "My SLURM_ARRAY_TASK_ID: " $SLURM_ARRAY_TASK_ID
