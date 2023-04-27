@@ -218,7 +218,7 @@ def draw_certain(nDraws):
     Parameters
     ----------
     nDraws : `int`
-        Desired number of hopeless injections
+        Desired number of certain injections
 
     Returns
     -------
