@@ -166,6 +166,7 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
     # Loop until we have the desired number of found injections
     nfound = 0
+    min_pdet = 1
     while nfound<=ntotal:
 
         # Draw new injections
@@ -176,6 +177,10 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
         # Evaluate detection probabilities
         p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
+        new_draws['p_det'] = p_det_predictions
+        min_new_pdet = min(p_det_predictions)
+        if min_new_pdet<min_pdet:
+            min_pdet = min_new_pdet
 
         # Probabilistically label "found" injections according to the above probabilities
         random_draws = np.random.random(batch_size)
@@ -191,7 +196,7 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
             all_found = pd.concat([all_found,found],ignore_index=True)
 
         # Iterate counter
-        print(len(all_found))
+        print(len(all_found),min_new_pdet)
         nfound += len(found)
 
     return all_found
