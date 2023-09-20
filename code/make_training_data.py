@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
 # Load injections
-injection_data = h5py.File('./../input/endo3_imbhpop-LIGO-T2100113-v12.hdf5','r')
+injection_data = h5py.File('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5','r')
 
 # Read injection parameters
 injectionData = pd.DataFrame()
@@ -54,5 +54,5 @@ injectionData['detected'] = np.where(far_min<1,1,0)
 injectionData = shuffle(injectionData)
 train_data,val_data = train_test_split(injectionData,train_size=0.75)
 
-train_data.to_hdf('./../data/imbh_training_data.hdf','train')
-val_data.to_hdf('./../data/imbh_validation_data.hdf','validate')
+train_data.to_hdf('./../data/training_data.hdf','train')
+val_data.to_hdf('./../data/validation_data.hdf','validate')

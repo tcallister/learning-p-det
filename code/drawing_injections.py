@@ -196,7 +196,7 @@ def draw_hopeless(nDraws):
 
         # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
-        params = draw_params(dist='injected')
+        params = draw_params(dist='uniform')#dist='injected')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
         snr = np.sqrt(H1_snr**2 + L1_snr**2)
         if snr<=4:
@@ -238,19 +238,21 @@ def draw_certain(nDraws):
     L_psd = psd.from_txt("./../input/L1-AVERAGE_PSD-1241560818-28800.txt",
                             psd_length,psd_delta_f,psd_low_frequency_cutoff,is_asd_file=False)
 
-    # Instantiate variables to count and store hopeless/findable events
+    # Instantiate variables to count and store certain detections
     n_certain = 0
     n_trials = 0
     certain_params = []
 
-    # Repeat until we reach the desired number of hopeless injections
+    # Repeat until we reach the desired number of injections
     while n_certain<nDraws:
 
-        # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
+        # Draw an event and compute Hanford & Livingston SNRs
         n_trials+=1
         params = draw_params(DL_max=200)
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
 
+        # If at least one detector has expected SNR>100, assume that this event is a certain detection,
+        # provided that at least one instrument is online at the time
         if min(H1_snr,L1_snr)>=100:
             n_certain+=1
             certain_params.append(params)

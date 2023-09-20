@@ -13,9 +13,22 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
 
     def call(self, y_true, y_pred):
 
-        ceil = tf.ones_like(y_pred)*(1.-1e-6)
-        y_pred = tf.where(y_pred>1.-1e-6,ceil,y_pred)
+        """
+        Parameters
+        ----------
+        y_true : `list`
+            True missed/found labels (0/1 respectively)
+        y_pred : `list`
+            Corresponding set of predicted detection probabilities
+        """
 
+        # The log likelihood below diverges numerically if predicted probabilities are too close to unity
+        # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
+        # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
+        ceil = tf.ones_like(y_pred)*(1.-1e-9)
+        y_pred = tf.where(y_pred>1.-1e-9,ceil,y_pred)
+
+        # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
         return -tf.math.reduce_mean(log_ps)
 
@@ -27,6 +40,29 @@ def scheduler(epoch, lr):
         return lr
 
 def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0.01):
+
+    """
+    Function to construct and return an ANN object, to be subsequently trained or into which
+    pre-trained weights can be loaded.
+
+    Parameters
+    ----------
+    input_shape : `int`
+        Dimensionality of input feature space (default 9)
+    layer_width : `int`
+        Number of neurons in each hidden layer (default 64)
+    hidden_layers : `int`
+        Number of hidden layers (default 3)
+    lr : `float`
+        Learning rate (default 1e-3)
+    leaky_alpha : `float` 
+        Parameter specifying LeakyReLU activation function (default 0.01)
+
+    Returns
+    -------
+    ann : `tf.keras.model.Sequential()`
+        Compiled ANN object
+    """
 
     # Initialize a sequential ANN object and create an initial hidden layer
     ann = tf.keras.models.Sequential()

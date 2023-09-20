@@ -86,9 +86,9 @@ def draw_new_injections(batch_size=1000):
 
     return draws
 
+"""
 def input_transform(params,scaler_stats):
 
-    """
     Function to transform a dictionary of parameters, as output by `draw_new_injections()`, into the rescaled coordinate
     system expected by our P_det emulator.
 
@@ -104,7 +104,6 @@ def input_transform(params,scaler_stats):
     -------
     param_vector : `array`
         Array of transformed and rescaled injection parameters to be passed through our neural network P_det emulator
-    """
     
     # Derive mass parameters
     m1_det = params.m1_src*(1.+params.z)
@@ -129,10 +128,14 @@ def input_transform(params,scaler_stats):
                             a2*np.sqrt(1.-cost2**2)*np.cos(phi2),
                             a2*np.sqrt(1.-cost2**2)*np.sin(phi2),
                             q)
+
+    # Optimal inclination factor
+    angular_factor = ((1.+params.cos_inc**2)/2.)**2 + params.cos_inc**2
     
     # Package the set of parameters expected by our network
-    param_vector = np.array([Mc_det**(5./6.)/DL,
-                              np.log(Mtot_det),
+    #param_vector = np.array([np.log(Mc_det**(5./6.)*np.sqrt(angular_factor)/DL),
+    param_vector = np.array([np.log(Mc_det**(5./6.)/DL),
+                              DL,
                               eta,
                               Xeff,
                               Xdiff,
@@ -144,6 +147,7 @@ def input_transform(params,scaler_stats):
     
     # Recenter, scale, and return
     return (param_vector.T-scaler_stats['mean'])/scaler_stats['std']
+"""
 
 def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1000):
 
@@ -166,6 +170,7 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
     # Loop until we have the desired number of found injections
     nfound = 0
+    min_pdet = 1
     while nfound<=ntotal:
 
         # Draw new injections
@@ -176,6 +181,10 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
         # Evaluate detection probabilities
         p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
+        new_draws['p_det'] = p_det_predictions
+        min_new_pdet = min(p_det_predictions)
+        if min_new_pdet<min_pdet:
+            min_pdet = min_new_pdet
 
         # Probabilistically label "found" injections according to the above probabilities
         random_draws = np.random.random(batch_size)
@@ -191,7 +200,7 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
             all_found = pd.concat([all_found,found],ignore_index=True)
 
         # Iterate counter
-        print(len(all_found))
+        print(len(all_found),min_new_pdet)
         nfound += len(found)
 
     return all_found
