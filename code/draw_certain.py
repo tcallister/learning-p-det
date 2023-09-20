@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from utilities import *
+from drawing_injections import draw_certain
 
-certain = draw_certain(10000)
+certain = draw_certain(50000)
 
 certain_params = pd.DataFrame(certain)
 certain_params['distance'] = certain_params.distance/1000.  # Convert from Mpc to Gpc

@@ -74,4 +74,5 @@ class ANNaverage():
         individual_predictions = [ann.predict(params,*args,**kwargs) for ann in self.ann_list]
 
         # Compute and return mean!
-        return np.exp(np.mean(np.log(individual_predictions),axis=0))
+        #return np.exp(np.mean(np.log(individual_predictions),axis=0))
+        return np.mean(individual_predictions,axis=0)

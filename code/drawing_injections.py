@@ -33,6 +33,8 @@ def draw_params(DL_max=15e3,dist='uniform'):
 
         mA = 100.*np.random.random()+2.
         mB = 100.*np.random.random()+2.
+        m1 = max(mA,mB)
+        m2 = min(mA,mB)
 
     else:
 
@@ -75,8 +77,8 @@ def draw_params(DL_max=15e3,dist='uniform'):
     time = np.random.random()*(O3_end-O3_start) + O3_start
 
     # Package it all in a dictionary and return
-    paramDict = {'mass1':max(mA,mB)*(1.+z),
-                'mass2':min(mA,mB)*(1.+z),
+    paramDict = {'mass1':m1*(1.+z),
+                'mass2':m2*(1.+z),
                 'distance':DL,
                 'redshift':z,
                 'spin1x':a1*np.sqrt(1.-cost1**2)*np.cos(phi1),
@@ -194,7 +196,7 @@ def draw_hopeless(nDraws):
 
         # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
-        params = draw_params(dist='injected')
+        params = draw_params(dist='uniform')#dist='injected')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
         snr = np.sqrt(H1_snr**2 + L1_snr**2)
         if snr<=4:
