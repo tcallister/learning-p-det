@@ -36,6 +36,13 @@ def draw_params(DL_max=15e3,dist='uniform'):
         m1 = max(mA,mB)
         m2 = min(mA,mB)
 
+    elif dist=='log':
+
+        mA = np.exp(np.random.uniform(low=np.log(2.),high=np.log(102.)))
+        mB = np.exp(np.random.uniform(low=np.log(2.),high=np.log(102.)))
+        m1 = max(mA,mB)
+        m2 = min(mA,mB)
+
     else:
 
         min_m1 = 2.
@@ -196,7 +203,7 @@ def draw_hopeless(nDraws):
 
         # Draw an event, compute its expected SNR, and check if this exceeds or is below 4
         n_trials+=1
-        params = draw_params(dist='uniform')#dist='injected')
+        params = draw_params(dist='log')#dist='injected')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
         snr = np.sqrt(H1_snr**2 + L1_snr**2)
         if snr<=4:
@@ -248,7 +255,7 @@ def draw_certain(nDraws):
 
         # Draw an event and compute Hanford & Livingston SNRs
         n_trials+=1
-        params = draw_params(DL_max=200)
+        params = draw_params(DL_max=500)
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
 
         # If at least one detector has expected SNR>100, assume that this event is a certain detection,
