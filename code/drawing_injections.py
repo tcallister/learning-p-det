@@ -28,11 +28,11 @@ def draw_params(DL_max=15e3,dist='uniform'):
         source orientation, distance, and time. Note that the provided masses are in the *detector frame*.
     """
 
-    # Draw random masses between 2,102 Msun
+    # Draw random masses between 2,100 Msun
     if dist=='uniform':
 
-        mA = 100.*np.random.random()+2.
-        mB = 100.*np.random.random()+2.
+        mA = 98.*np.random.random()+2.
+        mB = 98.*np.random.random()+2.
         m1 = max(mA,mB)
         m2 = min(mA,mB)
 
@@ -77,6 +77,7 @@ def draw_params(DL_max=15e3,dist='uniform'):
     time = np.random.random()*(O3_end-O3_start) + O3_start
 
     # Package it all in a dictionary and return
+    # Note that these dictionary keys need to correspond to parameters expected by `get_fd_waveform` in `get_snrs()` below
     paramDict = {'mass1':m1*(1.+z),
                 'mass2':m2*(1.+z),
                 'distance':DL,
@@ -199,7 +200,7 @@ def draw_hopeless(nDraws):
         params = draw_params(dist='uniform')#dist='injected')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
         snr = np.sqrt(H1_snr**2 + L1_snr**2)
-        if snr<=4:
+        if snr<=5:
             n_hopeless+=1
             hopeless_params.append(params)
 

@@ -12,7 +12,7 @@ injection_data = h5py.File('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5','r')
 injectionData = pd.DataFrame()
 injectionData['m1_detector'] = np.array(injection_data['injections']['mass1'][()],dtype='float64')
 injectionData['m2_detector'] = np.array(injection_data['injections']['mass2'][()],dtype='float64')
-injectionData['distance'] = injection_data['injections']['distance'][()]/1000.
+injectionData['luminosity_distance'] = injection_data['injections']['distance'][()]/1000. # Convert from Mpc to Gpc
 injectionData['cos_inclination'] = np.cos(injection_data['injections']['inclination'])
 injectionData['right_ascension'] = injection_data['injections']['right_ascension']
 injectionData['declination'] = injection_data['injections']['declination']
@@ -22,8 +22,8 @@ injectionData['redshift'] = injection_data['injections']['redshift'][()]
 # Some derived mass parameters
 injectionData['q'] = injectionData.m2_detector/injectionData.m1_detector
 injectionData['eta'] = injectionData.m1_detector*injectionData.m2_detector/(injectionData.m1_detector+injectionData.m2_detector)**2
-injectionData['Mc_detector'] = injectionData.eta**(3./5.)*(injectionData.m1_detector+injectionData.m2_detector)
-injectionData['Mtot_detector'] = (injectionData.m1_detector+injectionData.m2_detector)
+injectionData['chirp_mass_detector'] = injectionData.eta**(3./5.)*(injectionData.m1_detector+injectionData.m2_detector)
+injectionData['total_mass_detector'] = (injectionData.m1_detector+injectionData.m2_detector)
 
 # And some derived spin parameters
 s1x = np.array(injection_data['injections']['spin1x'])

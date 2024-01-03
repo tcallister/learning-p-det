@@ -28,6 +28,9 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         ceil = tf.ones_like(y_pred)*(1.-1e-9)
         y_pred = tf.where(y_pred>1.-1e-9,ceil,y_pred)
 
+        floor = tf.ones_like(y_pred)*(1e-20)
+        y_pred = tf.where(y_pred<1e-20,floor,y_pred)
+
         # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
         return -tf.math.reduce_mean(log_ps)
@@ -39,7 +42,7 @@ def scheduler(epoch, lr):
     else:
         return lr
 
-def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0.01):
+def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0.01,output_bias=None):
 
     """
     Function to construct and return an ANN object, to be subsequently trained or into which
@@ -75,21 +78,24 @@ def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0
 
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
-        ann.add(tf.keras.layers.Dense(units=layer_width,
-                                      kernel_initializer=initializers.RandomUniform(),
-                                      bias_initializer=initializers.RandomNormal(stddev=0.01)))
+        ann.add(tf.keras.layers.Dense(units=layer_width))
+                                      #kernel_initializer=initializers.RandomUniform(),
+                                      #bias_initializer=initializers.RandomNormal(stddev=0.01)))
+        #ann.add(tf.keras.layers.Dropout(0.5))
         ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
-    
+
     # Final output layer with sigmoid activation
-    ann.add(tf.keras.layers.Dense(units=1))
-    ann.add(tf.keras.layers.Activation(tf.keras.activations.sigmoid))
+    ann.add(tf.keras.layers.Dropout(0.5))
+    if output_bias is not None:
+        output_bias = tf.keras.initializers.Constant(output_bias)
+    ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation='sigmoid'))
     
     # Other setup
     loss = negativeLogLikelihood()
     opt = tf.keras.optimizers.Adam(learning_rate=lr)
     ann.compile(optimizer = opt,
                 loss = loss,
-                metrics = ['accuracy'])
+                metrics = ['accuracy',tf.keras.metrics.Precision(name='precision')])
     
     return ann
 
