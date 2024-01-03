@@ -7,9 +7,10 @@ from functools import partial
 from utilities import ANNaverage,generalized_Xp
 from training_routines import build_ann
 
+"""
 def draw_new_injections(batch_size=1000):
 
-    """
+    #""
     Function to draw new proposed injection parameters from the O3b injection distribution.
 
     Parameters
@@ -23,7 +24,7 @@ def draw_new_injections(batch_size=1000):
         Dictionary containing randomly drawn component masses, Cartesian spins, sky position,
         source orientation, distance, and time. Note that the provided masses are in the *source frame*,
         which differs from the convention used in e.g. `drawing_injections.draw_params()`
-    """
+    #""
 
     # Parameters governing O3b BBH injection distribution
     # see https://zenodo.org/record/5546676
@@ -51,11 +52,12 @@ def draw_new_injections(batch_size=1000):
     phi2 = np.random.uniform(low=0.,high=2.*np.pi,size=batch_size)
 
     # Manually construct CDF of redshift distribution
-    z_grid = np.linspace(1e-6,zMax,1000)
+    z_grid = np.linspace(1e-3,zMax,10000)
     dVdz_grid = 4.*np.pi*Planck15.differential_comoving_volume(z_grid).to(u.Gpc**3/u.sr).value
     p_z_grid = dVdz_grid*(1.+z_grid)**(kappa-1.)
     c_z_grid = np.cumsum(p_z_grid)
     c_z_grid /= c_z_grid[-1]
+    #DL_grid = np.linspace(0,15.,1000)
 
     # Draw random cumulant, inverse to obtain a redshift, and compute luminosity distance
     cs_z = np.random.random(batch_size)
@@ -85,6 +87,7 @@ def draw_new_injections(batch_size=1000):
                         'pol':pol})
 
     return draws
+"""
 
 """
 def input_transform(params,scaler_stats):
