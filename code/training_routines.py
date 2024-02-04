@@ -25,11 +25,11 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         # The log likelihood below diverges numerically if predicted probabilities are too close to unity
         # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
         # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
-        ceil = tf.ones_like(y_pred)*(1.-1e-9)
-        y_pred = tf.where(y_pred>1.-1e-9,ceil,y_pred)
+        ceil = tf.ones_like(y_pred)*(1.-1e-10)
+        y_pred = tf.where(y_pred>1.-1e-10,ceil,y_pred)
 
-        floor = tf.ones_like(y_pred)*(1e-20)
-        y_pred = tf.where(y_pred<1e-20,floor,y_pred)
+        floor = tf.ones_like(y_pred)*(1e-40)
+        y_pred = tf.where(y_pred<1e-40,floor,y_pred)
 
         # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
@@ -70,22 +70,26 @@ def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0
     # Initialize a sequential ANN object and create an initial hidden layer
     ann = tf.keras.models.Sequential()
     ann.add(tf.keras.layers.Dense(units=layer_width, input_shape=(input_shape,),
-                                  kernel_initializer=initializers.RandomUniform(),
-                                  bias_initializer=initializers.RandomNormal(stddev=0.01)))
+                                  kernel_initializer=initializers.GlorotNormal(),
+                                  bias_initializer=initializers.Zeros()))
             
     # Activation function
-    ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+    #ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+    ann.add(tf.keras.layers.ReLU())
 
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
-        ann.add(tf.keras.layers.Dense(units=layer_width))
+        ann.add(tf.keras.layers.Dense(units=layer_width,
+                                  kernel_initializer=initializers.GlorotNormal(),
+                                  bias_initializer=initializers.Zeros()))
                                       #kernel_initializer=initializers.RandomUniform(),
                                       #bias_initializer=initializers.RandomNormal(stddev=0.01)))
-        #ann.add(tf.keras.layers.Dropout(0.5))
-        ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+        #ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+        #ann.add(tf.keras.layers.Dropout(0.8))
+        ann.add(tf.keras.layers.ReLU())
 
     # Final output layer with sigmoid activation
-    ann.add(tf.keras.layers.Dropout(0.5))
+    ann.add(tf.keras.layers.Dropout(0.8))
     if output_bias is not None:
         output_bias = tf.keras.initializers.Constant(output_bias)
     ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation='sigmoid'))
