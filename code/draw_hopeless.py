@@ -3,7 +3,7 @@ import pandas as pd
 from drawing_injections import *
 from utilities import *
 
-hopeless,findable = draw_hopeless(50000)
+hopeless,findable = draw_hopeless(50)
 
 hopeless_params = pd.DataFrame(hopeless)
 hopeless_params['luminosity_distance'] = hopeless_params.distance/1000.  # Convert from Mpc to Gpc
@@ -32,4 +32,4 @@ hopeless_params = hopeless_params[['m1_detector','m2_detector','luminosity_dista
                 'Xeff','Xdiff','Xp_gen']]
 hopeless_params['detected'] = 0
 
-hopeless_params.to_hdf('./../data/hopeless_uniform.hdf','hopeless')
+hopeless_params.to_hdf('./../data/hopeless.hdf','hopeless')

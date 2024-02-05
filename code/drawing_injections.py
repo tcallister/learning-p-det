@@ -38,8 +38,8 @@ def draw_params(DL_max=15e3,dist='uniform'):
 
     elif dist=='log':
 
-        mA = np.exp(np.random.uniform(low=np.log(2.),high=np.log(102.)))
-        mB = np.exp(np.random.uniform(low=np.log(2.),high=np.log(102.)))
+        mA = np.exp(np.random.uniform(low=np.log(2.),high=np.log(98.)))
+        mB = np.exp(np.random.uniform(low=np.log(2.),high=np.log(98.)))
         m1 = max(mA,mB)
         m2 = min(mA,mB)
 
@@ -256,7 +256,7 @@ def draw_certain(nDraws):
 
         # Draw an event and compute Hanford & Livingston SNRs
         n_trials+=1
-        params = draw_params(DL_max=500)
+        params = draw_params(DL_max=500,dist='log')
         H1_snr,L1_snr = get_snrs(params,H_psd,L_psd)
 
         # If at least one detector has expected SNR>100, assume that this event is a certain detection,
