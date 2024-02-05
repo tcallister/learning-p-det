@@ -45,13 +45,13 @@ def new_scheduler(epoch, lr):
 
 def run_training(output):
 
-    train_data = pd.read_hdf('./../data/bbh_training_data.hdf').sample(20000)
-    val_data = pd.read_hdf('./../data/bbh_validation_data.hdf').sample(5000)
-    bns_train_data = pd.read_hdf('./../data/bns_training_data.hdf').sample(20000)
-    bns_val_data = pd.read_hdf('./../data/bns_validation_data.hdf').sample(5000)
-    nsbh_train_data = pd.read_hdf('./../data/nsbh_training_data.hdf').sample(20000)
-    nsbh_val_data = pd.read_hdf('./../data/nsbh_validation_data.hdf').sample(5000)
-    official_hopeless_data = pd.read_hdf('./../data/rpo3-without-hopeless-cut-formatted.hdf').sample(60000)
+    train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bbh_training_data.hdf').sample(20000)
+    val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bbh_validation_data.hdf').sample(5000)
+    bns_train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bns_training_data.hdf').sample(20000)
+    bns_val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bns_validation_data.hdf').sample(5000)
+    nsbh_train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/nsbh_training_data.hdf').sample(20000)
+    nsbh_val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/nsbh_validation_data.hdf').sample(5000)
+    official_hopeless_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/rpo3-without-hopeless-cut-formatted.hdf').sample(60000)
     official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8)
 
     train_data = shuffle(train_data.append(official_hopeless_data).\
@@ -78,7 +78,7 @@ def run_training(output):
     val_input_scaled = input_sc.transform(val_input)
 
     # Save preprocessing scaler
-    pickle.dump(input_sc, open("{0}_input_scaler.pickle","wb"))
+    pickle.dump(input_sc, open("{0}_input_scaler.pickle".format(output),"wb"))
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', 
