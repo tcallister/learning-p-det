@@ -42,7 +42,15 @@ def scheduler(epoch, lr):
     else:
         return lr
 
-def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0.01,output_bias=None):
+def build_ann(input_shape=9,
+        layer_width=64,
+        hidden_layers=3,
+        lr=1e-3,
+        activation='ReLU',
+        leaky_alpha=0.01,
+        dropout=True,
+        dropout_rate=0.5,
+        output_bias=None):
 
     """
     Function to construct and return an ANN object, to be subsequently trained or into which
@@ -74,22 +82,37 @@ def build_ann(input_shape=9,layer_width=64,hidden_layers=3,lr=1e-3,leaky_alpha=0
                                   bias_initializer=initializers.Zeros()))
             
     # Activation function
-    #ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
-    ann.add(tf.keras.layers.ReLU())
+    if activation=='ReLU':
+        ann.add(tf.keras.layers.ReLU())
+    elif activation=='LeakyReLU':
+        ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+    elif activation=='ELU':
+        ann.add(tf.keras.layers.elu())
+    else:
+        print("Activation not recognized!")
+        sys.exit()
 
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
+
+        # Dense layer
         ann.add(tf.keras.layers.Dense(units=layer_width,
                                   kernel_initializer=initializers.GlorotNormal(),
                                   bias_initializer=initializers.Zeros()))
-                                      #kernel_initializer=initializers.RandomUniform(),
-                                      #bias_initializer=initializers.RandomNormal(stddev=0.01)))
-        #ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
-        #ann.add(tf.keras.layers.Dropout(0.8))
-        ann.add(tf.keras.layers.ReLU())
+
+        # Activation
+        if activation=='ReLU':
+            ann.add(tf.keras.layers.ReLU())
+        elif activation=='LeakyReLU':
+            ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+        elif activation=='ELU':
+            ann.add(tf.keras.layers.elu())
+
+    # Add dropout, if specified
+    if dropout:
+        ann.add(tf.keras.layers.Dropout(dropout_rate))
 
     # Final output layer with sigmoid activation
-    ann.add(tf.keras.layers.Dropout(0.8))
     if output_bias is not None:
         output_bias = tf.keras.initializers.Constant(output_bias)
     ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation='sigmoid'))

@@ -1,10 +1,7 @@
 import numpy as np
-from pycbc.waveform import td_approximants, fd_approximants
-from pycbc import types, fft, waveform
-from pycbc.detector import Detector
-from pycbc import psd
-from astropy.cosmology import Planck15,z_at_value
-import astropy.units as u
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 
 def generalized_Xp(s1x,s1y,s2x,s2y,q):
 
@@ -76,3 +73,42 @@ class ANNaverage():
         # Compute and return mean!
         #return np.exp(np.mean(np.log(individual_predictions),axis=0))
         return np.mean(individual_predictions,axis=0)
+
+def load_training_data(
+    data_directory,
+    n_bbh = 20000,
+    n_bns = 20000,
+    n_nsbh = 20000,
+    n_hopeless = 60000,
+    rng_key = 111):
+
+    # Read injections
+    train_data = pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).sample(n_bbh,random_state=rng_key)
+    val_data = pd.read_hdf('{0}/bbh_validation_data.hdf'.format(data_directory)).sample(int(n_bbh/4),random_state=rng_key)
+    bns_train_data = pd.read_hdf('{0}/bns_training_data.hdf'.format(data_directory)).sample(n_bns,random_state=rng_key)
+    bns_val_data = pd.read_hdf('{0}/bns_validation_data.hdf'.format(data_directory)).sample(int(n_bns/4),random_state=rng_key)
+    nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh,random_state=rng_key)
+    nsbh_val_data = pd.read_hdf('{0}/nsbh_validation_data.hdf'.format(data_directory)).sample(int(n_nsbh/4),random_state=rng_key)
+
+    # Read and split hopeless injections
+    official_hopeless_data = pd.read_hdf('{0}/rpo3-without-hopeless-cut-formatted.hdf'.format(data_directory)).sample(n_hopeless,random_state=rng_key)
+    official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8,random_state=rng_key)
+
+    # Append training and validation sets together and shuffle
+    train_data = shuffle(train_data.append(official_hopeless_data).\
+                            append(bns_train_data).\
+                            append(nsbh_train_data),\
+                            random_state=rng_key
+                        )
+    val_data = shuffle(val_data.append(val_official_hopeless_data).\
+                           append(bns_val_data).\
+                           append(nsbh_val_data),
+                           random_state=rng_key
+                       )
+
+    return train_data,val_data
+
+if __name__=="__main__":
+    
+    load_training_data(rng_key=12)
+
