@@ -15,24 +15,30 @@ import pickle
 
 def addDerived(data):
 
-    data['amp_factor_a'] = ((data.chirp_mass_detector**(5./6.)/data.luminosity_distance*((1.+data.cos_inclination**2)/2))**2)
-    data['amp_factor_b'] = ((data.chirp_mass_detector**(5./6.)/data.luminosity_distance*data.cos_inclination)**2)
+    data['amp_factor_a'] = log((data.chirp_mass_detector**(5./6.)/data.luminosity_distance*((1.+data.cos_inclination**2)/2))**2)
+    data['amp_factor_b'] = log((data.chirp_mass_detector**(5./6.)/data.luminosity_distance*data.cos_inclination)**2)
+    data['log_m1'] = np.log(data.m1_detector)
+    data['log_Mc'] = np.log(data.chirp_mass_detector)
+    data['log_Mtot'] = np.log(data.total_mass_detector)
     data['sin_declination'] = np.sin(data.declination)
+    data['cos_pol'] = np.cos(data.polarization)
+    data['sin_pol'] = np.sin(data.polarization)
 
 def input_output(data):
 
     input_data = data[['amp_factor_a',
                        'amp_factor_b',
-                       'm1_detector',
-                       'chirp_mass_detector',
-                       'total_mass_detector',
-                       'eta',
-                       'luminosity_distance',
-                       'redshift',
+                       'log_m1',
+                       'log_Mc',
+                       'log_Mtot',
+                       'q',
+                       'log_d',
                        'right_ascension',
                        'sin_declination',
-                       'Xeff',
-                       'polarization']]
+                       'cos_inclination',
+                       'sin_pol',
+                       'cos_pol',
+                       'Xeff']]
 
     output_data = data[['detected']]
     return input_data,output_data
