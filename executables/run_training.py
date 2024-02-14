@@ -4,6 +4,7 @@ import sys
 sys.path.append('./../code/')
 from training_routines import *
 from diagnostics import *
+from utilities import load_training_data
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -51,23 +52,13 @@ def new_scheduler(epoch, lr):
 
 def run_training(output):
 
-    train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bbh_training_data.hdf').sample(20000)
-    val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bbh_validation_data.hdf').sample(5000)
-    bns_train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bns_training_data.hdf').sample(20000)
-    bns_val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/bns_validation_data.hdf').sample(5000)
-    nsbh_train_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/nsbh_training_data.hdf').sample(20000)
-    nsbh_val_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/nsbh_validation_data.hdf').sample(5000)
-    official_hopeless_data = pd.read_hdf('/project2/kicp/tcallister/learning-p-det-data/input_data/rpo3-without-hopeless-cut-formatted.hdf').sample(60000)
-    official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8)
-
-    train_data = shuffle(train_data.append(official_hopeless_data).\
-                         append(bns_train_data).\
-                         append(nsbh_train_data)\
-                        )
-    val_data = shuffle(val_data.append(val_official_hopeless_data).\
-                       append(bns_val_data).\
-                       append(nsbh_val_data)\
-                       )
+    train_data,val_data = load_training_data('./../data/',
+                                            n_bbh = 50000,
+                                            n_bns = 50000,
+                                            n_nsbh = 50000,
+                                            n_hopeless = 100000,
+                                            n_certain = 50000,
+                                            rng_key=11)
 
     # Add derived parameters
     addDerived(train_data)
@@ -89,17 +80,25 @@ def run_training(output):
     early_stopping = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', 
         verbose=1,
-        patience=40,
+        patience=30,
         mode='min',
         restore_best_weights=True)
 
     initial_bias = np.log(train_data[train_data.detected==1].shape[0]/train_data.shape[0])
-    ann = build_ann(input_shape=12,layer_width=64,hidden_layers=3,lr=3e-4,leaky_alpha=0.0001,output_bias=initial_bias)
-    callbacks = [tf.keras.callbacks.LearningRateScheduler(new_scheduler, verbose=0),early_stopping]
+    ann = build_ann(input_shape=13,
+                    layer_width=128,
+                    hidden_layers=4,
+                    activation='ReLU',
+                    lr=1e-4,
+                    dropout=True,
+                    dropout_rate=0.5,
+                    output_bias=initial_bias)
+
+    callbacks = [early_stopping]
     history = ann.fit(train_input_scaled,
                       train_output,
-                      batch_size = 64,
-                      epochs = 600,
+                      batch_size = 32,
+                      epochs = 400,
                       validation_data = (val_input_scaled,val_output),
                       callbacks=callbacks,
                       verbose=1)
