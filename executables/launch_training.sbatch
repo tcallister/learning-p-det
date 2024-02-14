@@ -2,8 +2,9 @@
 
 #SBATCH --job-name=array
 #SBATCH --account=kicp
-#SBATCH --output=logs/log.out
-#SBATCH --error=logs/log.err
+#SBATCH --output=logs/log_%A_%a.out
+#SBATCH --error=logs/log_%A_%a.err
+#SBATCH --array=0-10
 #SBATCH --time=01:00:00
 #SBATCH --partition=kicp
 #SBATCH --ntasks=1
@@ -16,9 +17,8 @@ echo "My SLURM_ARRAY_TASK_ID: " $SLURM_ARRAY_TASK_ID
 cd /home/tcallister/repositories/learning-p-det/executables/
 conda activate learning-p-det-midway
 
-output_dir=/project2/kicp/tcallister/learning-p-det-data/trained_model/
-mkdir -p $output_dir/model_checkpoints/
+output_dir=/project2/kicp/tcallister/learning-p-det-data/trained_models_baseline/
+mkdir -p $output_dir
 
-#output_file=$output_dir/$(printf "%02d" $SLURM_ARRAY_TASK_ID).json
-#echo "Writing to: " $output_file
-python run_training.py $output_dir
+output_file_prefix=$output_dir/job_$(printf "%02d" $SLURM_ARRAY_TASK_ID)
+python run_training.py $output_file_prefix
