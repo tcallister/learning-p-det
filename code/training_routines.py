@@ -25,11 +25,11 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         # The log likelihood below diverges numerically if predicted probabilities are too close to unity
         # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
         # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
-        ceil = tf.ones_like(y_pred)*(1.-1e-10)
-        y_pred = tf.where(y_pred>1.-1e-10,ceil,y_pred)
+        #ceil = tf.ones_like(y_pred)*(1.-1e-10)
+        #y_pred = tf.where(y_pred>1.-1e-10,ceil,y_pred)
 
-        floor = tf.ones_like(y_pred)*(1e-40)
-        y_pred = tf.where(y_pred<1e-40,floor,y_pred)
+        #floor = tf.ones_like(y_pred)*(1e-40)
+        #y_pred = tf.where(y_pred<1e-40,floor,y_pred)
 
         # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
@@ -78,7 +78,7 @@ def build_ann(input_shape=9,
     # Initialize a sequential ANN object and create an initial hidden layer
     ann = tf.keras.models.Sequential()
     ann.add(tf.keras.layers.Dense(units=layer_width, input_shape=(input_shape,),
-                                  kernel_initializer=initializers.GlorotNormal(),
+                                  kernel_initializer=initializers.GlorotUniform(),
                                   bias_initializer=initializers.Zeros()))
             
     # Activation function
@@ -87,7 +87,7 @@ def build_ann(input_shape=9,
     elif activation=='LeakyReLU':
         ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
     elif activation=='ELU':
-        ann.add(tf.keras.layers.elu())
+        ann.add(tf.keras.layers.ELU())
     else:
         print("Activation not recognized!")
         sys.exit()
@@ -95,9 +95,13 @@ def build_ann(input_shape=9,
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
 
+        #ann.add(tf.keras.layers.Dropout(0.2))
+
+        print(layer_width)
+
         # Dense layer
         ann.add(tf.keras.layers.Dense(units=layer_width,
-                                  kernel_initializer=initializers.GlorotNormal(),
+                                  kernel_initializer=initializers.GlorotUniform(),
                                   bias_initializer=initializers.Zeros()))
 
         # Activation
@@ -106,10 +110,12 @@ def build_ann(input_shape=9,
         elif activation=='LeakyReLU':
             ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
         elif activation=='ELU':
-            ann.add(tf.keras.layers.elu())
+            ann.add(tf.keras.layers.ELU())
+
 
     # Add dropout, if specified
     if dropout:
+        print("!!",dropout_rate)
         ann.add(tf.keras.layers.Dropout(dropout_rate))
 
     # Final output layer with sigmoid activation
