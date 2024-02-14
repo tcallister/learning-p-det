@@ -4,7 +4,7 @@
 #SBATCH --account=kicp
 #SBATCH --output=logs/log_%A_%a.out
 #SBATCH --error=logs/log_%A_%a.err
-#SBATCH --array=0-10
+#SBATCH --array=0-50
 #SBATCH --time=01:00:00
 #SBATCH --partition=kicp
 #SBATCH --ntasks=1
