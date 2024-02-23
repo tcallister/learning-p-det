@@ -94,35 +94,38 @@ def load_training_data(
     nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh,random_state=generator)
     nsbh_val_data = pd.read_hdf('{0}/nsbh_validation_data.hdf'.format(data_directory)).sample(int(n_nsbh/4),random_state=generator)
 
+    train_data = train_data.append(bns_train_data).append(nsbh_train_data)
+    val_data = val_data.append(bns_val_data).append(nsbh_val_data)
+
     # Read and split hopeless injections
-    official_hopeless_data = pd.read_hdf('{0}/rpo3-without-hopeless-cut-formatted.hdf'.format(data_directory)).sample(n_hopeless,random_state=generator)
-    official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+    if n_hopeless>0:
+
+        official_hopeless_data = pd.read_hdf('{0}/rpo3-without-hopeless-cut-formatted.hdf'.format(data_directory)).sample(n_hopeless,random_state=generator)
+        official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+
+        train_data = train_data.append(official_hopeless_data)
+        val_data = val_data.append(val_official_hopeless_data)
 
     # Read and split certain injections
-    official_certain_data = pd.read_hdf('{0}/rpo3-certain-formatted.hdf'.format(data_directory)).sample(n_certain,random_state=generator)
-    official_certain_data['detected'] = 1
-    official_certain_data['detected'].iloc[official_certain_data.obs_snr<=8] = 0
+    if n_certain>0:
 
-    # Remove odd events
-    to_clip = (official_certain_data.m1_detector<10.*official_certain_data.luminosity_distance**1.2)
-    official_certain_data['detected'].iloc[to_clip] = 0
+        official_certain_data = pd.read_hdf('{0}/rpo3-certain-formatted.hdf'.format(data_directory)).sample(n_certain,random_state=generator)
+        official_certain_data['detected'] = 1
+        official_certain_data['detected'].iloc[official_certain_data.obs_snr<=8] = 0
 
-    # Split
-    official_certain_data,val_official_certain_data = train_test_split(official_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+        # Remove odd events
+        to_clip = (official_certain_data.m1_detector<10.*official_certain_data.luminosity_distance**1.2)
+        official_certain_data['detected'].iloc[to_clip] = 0
+
+        # Split
+        official_certain_data,val_official_certain_data = train_test_split(official_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+
+        train_data = train_data.append(official_certain_data)
+        val_data = val_data.append(val_official_certain_data)
 
     # Append training and validation sets together and shuffle
-    train_data = shuffle(train_data.append(official_hopeless_data).\
-                            append(official_certain_data).\
-                            append(bns_train_data).\
-                            append(nsbh_train_data),\
-                            random_state=generator.integers(0,high=1024)
-                        )
-    val_data = shuffle(val_data.append(val_official_hopeless_data).\
-                           append(val_official_certain_data).\
-                           append(bns_val_data).\
-                           append(nsbh_val_data),
-                           random_state=generator.integers(0,high=1024)
-                       )
+    train_data = shuffle(train_data,random_state=generator.integers(0,high=1024))
+    val_data = shuffle(val_data,random_state=generator.integers(0,high=1024))
 
     return train_data,val_data
 
