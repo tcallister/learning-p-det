@@ -7,10 +7,9 @@ from functools import partial
 from utilities import ANNaverage,generalized_Xp
 from training_routines import build_ann
 
-"""
 def draw_new_injections(batch_size=1000):
 
-    #""
+    """
     Function to draw new proposed injection parameters from the O3b injection distribution.
 
     Parameters
@@ -24,7 +23,7 @@ def draw_new_injections(batch_size=1000):
         Dictionary containing randomly drawn component masses, Cartesian spins, sky position,
         source orientation, distance, and time. Note that the provided masses are in the *source frame*,
         which differs from the convention used in e.g. `drawing_injections.draw_params()`
-    #""
+    """
 
     # Parameters governing O3b BBH injection distribution
     # see https://zenodo.org/record/5546676
@@ -57,7 +56,6 @@ def draw_new_injections(batch_size=1000):
     p_z_grid = dVdz_grid*(1.+z_grid)**(kappa-1.)
     c_z_grid = np.cumsum(p_z_grid)
     c_z_grid /= c_z_grid[-1]
-    #DL_grid = np.linspace(0,15.,1000)
 
     # Draw random cumulant, inverse to obtain a redshift, and compute luminosity distance
     cs_z = np.random.random(batch_size)
@@ -67,27 +65,42 @@ def draw_new_injections(batch_size=1000):
     # Isotropic sky position and orientation
     cos_inc = np.random.uniform(low=-1.,high=1.,size=batch_size)
     ra = np.random.uniform(low=0.,high=2.*np.pi,size=batch_size)
-    sin_dec = np.random.uniform(low=-1.,high=1.,size=batch_size)
+    dec = np.arcsin(np.random.uniform(low=-1.,high=1.,size=batch_size))
     pol = np.random.uniform(low=0.,high=2.*np.pi,size=batch_size)
+
+    # Derive mass parameters
+    m1_det = m1*(1.+z)
+    m2_det = m2*(1.+z)
+    q = m2_det/m1_det
+    eta = q/(1.+q)**2
+    Mtot_det = m1_det+m2_det
+    Mc_det = Mtot_det*eta**(3./5.)
+    Xeff = (a1*cost1 + q*a2*cost2)/(1.+q)
     
     # Record and return
     draws = pd.DataFrame({'m1_src':m1,
                         'm2_src':m2,
+                        'm1_detector':m1_det,
+                        'm2_detector':m2_det,
+                        'chirp_mass_detector':Mc_det,
+                        'total_mass_detector':Mtot_det,
+                        'q':q,
+                        'eta':eta,
                         'a1':a1,
                         'a2':a2,
                         'cost1':cost1,
                         'cost2':cost2,
+                        'Xeff':Xeff,
                         'phi1':phi1,
                         'phi2':phi2,
-                        'z':z,
-                        'DL':DL,
-                        'cos_inc':cos_inc,
-                        'ra':ra,
-                        'sin_dec':sin_dec,
-                        'pol':pol})
+                        'redshift':z,
+                        'luminosity_distance':DL,
+                        'cos_inclination':cos_inc,
+                        'right_ascension':ra,
+                        'declination':dec,
+                        'polarization':pol})
 
     return draws
-"""
 
 """
 def input_transform(params,scaler_stats):
@@ -152,7 +165,7 @@ def input_transform(params,scaler_stats):
     return (param_vector.T-scaler_stats['mean'])/scaler_stats['std']
 """
 
-def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1000):
+def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,ntotal,batch_size=1000,verbose=False):
 
     """
     Generates new sets of "found" injections drawn from the O3b BBH injected distribution, labeled
@@ -178,9 +191,11 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
         # Draw new injections
         new_draws = draw_new_injections(batch_size=batch_size)
+        addDerived_func(new_draws)
+        new_draws_features = new_draws[feature_names]
 
         # Transform to the expected parameter space
-        rescaled_input_parameters = input_transformation(new_draws)
+        rescaled_input_parameters = scaler.transform(new_draws_features)
 
         # Evaluate detection probabilities
         p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
@@ -191,7 +206,7 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
 
         # Probabilistically label "found" injections according to the above probabilities
         random_draws = np.random.random(batch_size)
-        found = new_draws[random_draws<p_det_predictions]
+        found = new_draws[random_draws<p_det_predictions].copy()
 
         # Record found injections
         # If these are our first ones, start a dataframe
@@ -203,7 +218,8 @@ def gen_found_injections(p_det_emulator,input_transformation,ntotal,batch_size=1
             all_found = pd.concat([all_found,found],ignore_index=True)
 
         # Iterate counter
-        print(len(all_found),min_new_pdet)
+        if verbose:
+            print(len(all_found),min_new_pdet)
         nfound += len(found)
 
     return all_found

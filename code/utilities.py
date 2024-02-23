@@ -72,8 +72,7 @@ class ANNaverage():
         individual_predictions = [ann.predict(params,*args,**kwargs) for ann in self.ann_list]
 
         # Compute and return mean!
-        #return np.exp(np.mean(np.log(individual_predictions),axis=0))
-        return np.mean(individual_predictions,axis=0)
+        return np.exp(np.mean(np.log(individual_predictions),axis=0))
 
 def load_training_data(
     data_directory,
@@ -125,6 +124,16 @@ def load_training_data(
                        )
 
     return train_data,val_data
+
+class ANNaverage():
+    
+    def __init__(self,ann_list):
+        self.ann_list = ann_list
+        
+    def predict(self,params,*args,**kwargs):
+        print(kwargs)
+        individual_predictions = [ann.predict(params,*args,**kwargs) for ann in self.ann_list]
+        return np.exp(np.mean(np.log(individual_predictions),axis=0))
 
 if __name__=="__main__":
     
