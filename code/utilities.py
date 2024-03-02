@@ -93,6 +93,14 @@ def load_training_data(
     nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh,random_state=generator)
     nsbh_val_data = pd.read_hdf('{0}/nsbh_validation_data.hdf'.format(data_directory)).sample(int(n_nsbh/4),random_state=generator)
 
+    # Assign class identifiers
+    train_data['class'] = 0
+    val_data['class'] = 0
+    bns_train_data['class'] = 1
+    bns_val_data['class'] = 1
+    nsbh_train_data['class'] = 2
+    nsbh_val_data['class'] = 2
+
     train_data = pd.concat([train_data,bns_train_data,nsbh_train_data])
     val_data = pd.concat([val_data,bns_val_data,nsbh_val_data])
 
@@ -101,6 +109,9 @@ def load_training_data(
 
         official_hopeless_data = pd.read_hdf('{0}/rpo3-without-hopeless-cut-formatted.hdf'.format(data_directory)).sample(n_hopeless,random_state=generator)
         official_hopeless_data,val_official_hopeless_data = train_test_split(official_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+
+        official_hopeless_data['class'] = 3
+        val_official_hopeless_data['class'] = 3
 
         train_data = pd.concat([train_data,official_hopeless_data])
         val_data = pd.concat([val_data,val_official_hopeless_data])
@@ -119,6 +130,9 @@ def load_training_data(
         # Split
         official_certain_data,val_official_certain_data = train_test_split(official_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
 
+        official_certain_data['class'] = 4
+        val_official_certain_data['class'] = 4
+
         train_data = pd.concat([train_data,official_certain_data])
         val_data = pd.concat([val_data,val_official_certain_data])
 
@@ -127,16 +141,6 @@ def load_training_data(
     val_data = shuffle(val_data,random_state=generator.integers(0,high=1024))
 
     return train_data,val_data
-
-class ANNaverage():
-    
-    def __init__(self,ann_list):
-        self.ann_list = ann_list
-        
-    def predict(self,params,*args,**kwargs):
-        print(kwargs)
-        individual_predictions = [ann.predict(params,*args,**kwargs) for ann in self.ann_list]
-        return np.exp(np.mean(np.log(individual_predictions),axis=0))
 
 if __name__=="__main__":
     

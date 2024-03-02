@@ -8,6 +8,7 @@ from sklearn.utils import shuffle
 def format_data(file,output):
 
     injection_data = h5py.File(file,'r')
+    print(injection_data.attrs['total_generated'])
 
     # Read injection parameters
     injectionData = pd.DataFrame()
@@ -51,6 +52,10 @@ def format_data(file,output):
     # Take minimum FAR across all searches and assign detection labels
     far_min = np.min(np.stack([far_gstlal,far_pycbc,far_pycbc_hyper,far_mbta,far_cwb]),axis=0)
     injectionData['detected'] = np.where(far_min<1,1,0)
+
+    #print(injectionData[injectionData['detected']==1].size)
+    #print(len(injectionData[injectionData['detected']==1]))
+    #print(len(injectionData[injectionData['detected']==1])/injection_data.attrs['total_generated'])
 
     injectionData = shuffle(injectionData)
     train_data,val_data = train_test_split(injectionData,train_size=0.8)

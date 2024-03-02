@@ -33,7 +33,9 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
 
         # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
-        return -tf.math.reduce_mean(log_ps)
+
+        # Return with prior penalizing large probabilities
+        return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(y_pred)
 
 def scheduler(epoch, lr):
 
@@ -45,6 +47,7 @@ def scheduler(epoch, lr):
 def build_ann(input_shape=9,
         layer_width=64,
         hidden_layers=3,
+        loss=None,
         lr=1e-3,
         activation='ReLU',
         leaky_alpha=0.01,
@@ -95,10 +98,6 @@ def build_ann(input_shape=9,
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
 
-        #ann.add(tf.keras.layers.Dropout(0.2))
-
-        print(layer_width)
-
         # Dense layer
         ann.add(tf.keras.layers.Dense(units=layer_width,
                                   kernel_initializer=initializers.GlorotUniform(),
@@ -124,7 +123,8 @@ def build_ann(input_shape=9,
     ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation='sigmoid'))
     
     # Other setup
-    loss = negativeLogLikelihood()
+    if not loss:
+        loss = negativeLogLikelihood()
     opt = tf.keras.optimizers.Adam(learning_rate=lr)
     ann.compile(optimizer = opt,
                 loss = loss,

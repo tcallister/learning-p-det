@@ -186,6 +186,7 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
 
     # Loop until we have the desired number of found injections
     nfound = 0
+    nTrials = 0
     min_pdet = 1
     while nfound<=ntotal:
 
@@ -221,8 +222,9 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
         if verbose:
             print(len(all_found),min_new_pdet)
         nfound += len(found)
+        nTrials += batch_size
 
-    return all_found
+    return all_found,nTrials
 
 if __name__=="__main__":
 
