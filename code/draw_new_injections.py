@@ -7,10 +7,22 @@ from functools import partial
 from utilities import ANNaverage,generalized_Xp
 from training_routines import build_ann
 
-def draw_new_injections(batch_size=1000):
+def draw_new_injections(batch_size=1000,
+        min_m1=2.,
+        max_m1=100.,
+        alpha_m1=-2.35,
+        min_m2=2.,
+        max_m2=100.,
+        alpha_m2=1.,
+        max_a1=0.998,
+        max_a2=0.998,
+        zMax=1.9,
+        kappa=1.,
+        conditional_mass=False):
 
     """
     Function to draw new proposed injection parameters from the O3b injection distribution.
+    See https://zenodo.org/record/5546676
 
     Parameters
     ----------
@@ -26,25 +38,20 @@ def draw_new_injections(batch_size=1000):
     """
 
     # Parameters governing O3b BBH injection distribution
-    # see https://zenodo.org/record/5546676
-    min_m1 = 2.
-    max_m1 = 100.
-    alpha_m1 = -2.35
-    min_m2 = 2.
-    alpha_m2 = 1.
-    aMax = 0.998
-    zMax=1.9
-    kappa=1.
 
     # Draw random cumulants in the m1 and m2 distribution and use the inverse CDF to translate into m1 and m2 values
     cs_m1 = np.random.random(batch_size)
     cs_m2 = np.random.random(batch_size)
     m1 = (min_m1**(1.+alpha_m1) + cs_m1*(max_m1**(1.+alpha_m1)-min_m1**(1.+alpha_m1)))**(1./(1.+alpha_m1))
-    m2 = (min_m2**(1.+alpha_m2) + cs_m2*(m1**(1.+alpha_m2)-min_m2**(1.+alpha_m2)))**(1./(1.+alpha_m2))
+
+    if conditional_mass==True:
+        m2 = (min_m2**(1.+alpha_m2) + cs_m2*(m1**(1.+alpha_m2)-min_m2**(1.+alpha_m2)))**(1./(1.+alpha_m2))
+    else:
+        m2 = (min_m2**(1.+alpha_m2) + cs_m2*(max_m2**(1.+alpha_m2)-min_m2**(1.+alpha_m2)))**(1./(1.+alpha_m2))
 
     # Random isotropic spins
-    a1 = np.random.uniform(low=0.,high=aMax,size=batch_size)
-    a2 = np.random.uniform(low=0.,high=aMax,size=batch_size)
+    a1 = np.random.uniform(low=0.,high=max_a1,size=batch_size)
+    a2 = np.random.uniform(low=0.,high=max_a2,size=batch_size)
     cost1 = np.random.uniform(low=-1.,high=1.,size=batch_size)
     cost2 = np.random.uniform(low=-1.,high=1.,size=batch_size)
     phi1 = np.random.uniform(low=0.,high=2.*np.pi,size=batch_size)
@@ -76,6 +83,12 @@ def draw_new_injections(batch_size=1000):
     Mtot_det = m1_det+m2_det
     Mc_det = Mtot_det*eta**(3./5.)
     Xeff = (a1*cost1 + q*a2*cost2)/(1.+q)
+    Xdiff = (a1*cost1 - q*a2*cost2)/(1.+q)
+    sint1 = np.sqrt(1.-cost1**2)
+    sint2 = np.sqrt(1.-cost2**2)
+    Xp_gen = generalized_Xp(a1*sint1*np.cos(phi1),a1*sint1*np.sin(phi1),
+                            a2*sint2*np.cos(phi2),a2*sint2*np.sin(phi2),
+                            q)
     
     # Record and return
     draws = pd.DataFrame({'m1_src':m1,
@@ -91,6 +104,8 @@ def draw_new_injections(batch_size=1000):
                         'cost1':cost1,
                         'cost2':cost2,
                         'Xeff':Xeff,
+                        'Xdiff':Xdiff,
+                        'Xp_gen':Xp_gen,
                         'phi1':phi1,
                         'phi2':phi2,
                         'redshift':z,
@@ -100,72 +115,12 @@ def draw_new_injections(batch_size=1000):
                         'declination':dec,
                         'polarization':pol})
 
+    if conditional_mass==False:
+        draws = draws[draws.m1_src>draws.m2_src]
+
     return draws
 
-"""
-def input_transform(params,scaler_stats):
-
-    Function to transform a dictionary of parameters, as output by `draw_new_injections()`, into the rescaled coordinate
-    system expected by our P_det emulator.
-
-    Parameters
-    ----------
-    params : `dict`
-        Dictionary of proposed event parameters, as produced by `draw_new_injections()`
-    scaler_stats : `dict`
-        Dictionary containing ['mean'] and ['std'] keys, with which transformed parameters will be rescaled and recentered.
-        This is produced in the neural network training.
-
-    Returns
-    -------
-    param_vector : `array`
-        Array of transformed and rescaled injection parameters to be passed through our neural network P_det emulator
-    
-    # Derive mass parameters
-    m1_det = params.m1_src*(1.+params.z)
-    m2_det = params.m2_src*(1.+params.z)
-    q = m2_det/m1_det
-    eta = q/(1.+q)**2
-    Mtot_det = m1_det+m2_det
-    Mc_det = Mtot_det*eta**(3./5.)
-    
-    # Derive spin parameters
-    a1 = params.a1
-    a2 = params.a2
-    cost1 = params.cost1
-    cost2 = params.cost2
-    phi1 = params.phi1
-    phi2 = params.phi2
-    DL = params.DL
-    Xeff = (a1*cost1 + q*a2*cost2)/(1.+q)
-    Xdiff = (a1*cost1 - q*a2*cost2)/(1.+q)
-    Xp_gen = generalized_Xp(a1*np.sqrt(1.-cost1**2)*np.cos(phi1),
-                            a1*np.sqrt(1.-cost1**2)*np.sin(phi1),
-                            a2*np.sqrt(1.-cost2**2)*np.cos(phi2),
-                            a2*np.sqrt(1.-cost2**2)*np.sin(phi2),
-                            q)
-
-    # Optimal inclination factor
-    angular_factor = ((1.+params.cos_inc**2)/2.)**2 + params.cos_inc**2
-    
-    # Package the set of parameters expected by our network
-    #param_vector = np.array([np.log(Mc_det**(5./6.)*np.sqrt(angular_factor)/DL),
-    param_vector = np.array([np.log(Mc_det**(5./6.)/DL),
-                              DL,
-                              eta,
-                              Xeff,
-                              Xdiff,
-                              Xp_gen,
-                              params.cos_inc,
-                              params.ra,
-                              params.sin_dec,
-                              params.pol])
-    
-    # Recenter, scale, and return
-    return (param_vector.T-scaler_stats['mean'])/scaler_stats['std']
-"""
-
-def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,ntotal,batch_size=1000,verbose=False):
+def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,ntotal,batch_size=1000,pop='BBH',verbose=False):
 
     """
     Generates new sets of "found" injections drawn from the O3b BBH injected distribution, labeled
@@ -191,7 +146,65 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
     while nfound<=ntotal:
 
         # Draw new injections
-        new_draws = draw_new_injections(batch_size=batch_size)
+        if pop=='BBH':
+
+            # BBH params
+            min_m1=2.
+            max_m1=100.
+            alpha_m1=-2.35
+            min_m2=2.
+            max_m2=100.
+            alpha_m2=1.
+            max_a1=0.998
+            max_a2=0.998
+            zMax=1.9
+            kappa=1.
+            conditional_mass=True
+
+        elif pop=='NSBH':
+
+            # NSBH params
+            min_m1=2.5
+            max_m1=60.
+            alpha_m1=-2.35
+            min_m2=1.
+            max_m2=2.5
+            alpha_m2=0.
+            max_a1=0.998
+            max_a2=0.4
+            zMax=0.25
+            kappa=0.
+            conditional_mass=False
+
+        elif pop=='BNS':
+
+            # BNS params
+            min_m1=1.0
+            max_m1=2.5
+            alpha_m1=1.0
+            min_m2=1.0
+            max_m2=2.5
+            alpha_m2=0.
+            max_a1=0.4
+            max_a2=0.4
+            zMax=0.15
+            kappa=0.
+            conditional_mass=False
+
+        # Take draws
+        new_draws = draw_new_injections(batch_size=batch_size,
+            min_m1=min_m1,
+            max_m1=max_m1,
+            alpha_m1=alpha_m1,
+            min_m2=min_m2,
+            max_m2=max_m2,
+            alpha_m2=alpha_m2,
+            max_a1=max_a1,
+            max_a2=max_a2,
+            zMax=zMax,
+            kappa=kappa,
+            conditional_mass=conditional_mass)
+
         addDerived_func(new_draws)
         new_draws_features = new_draws[feature_names]
 
@@ -206,7 +219,7 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
             min_pdet = min_new_pdet
 
         # Probabilistically label "found" injections according to the above probabilities
-        random_draws = np.random.random(batch_size)
+        random_draws = np.random.random(len(new_draws))
         found = new_draws[random_draws<p_det_predictions].copy()
 
         # Record found injections
@@ -222,7 +235,7 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
         if verbose:
             print(len(all_found),min_new_pdet)
         nfound += len(found)
-        nTrials += batch_size
+        nTrials += len(new_draws)
 
     return all_found,nTrials
 
