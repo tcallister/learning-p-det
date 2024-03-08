@@ -26,24 +26,42 @@ def draw_new_injections(batch_size=1000,
 
     Parameters
     ----------
-    batch_size : `int`
-        The number of event parameters to draw and return (default 1000)
+    min_m1 : `float`
+        Minimum source-frame primary mass
+    max_m1 : `float`
+        Maximum source-frame primary mass
+    alpha_m1 : `float`
+        Power-law index on primary mass distribution
+    min_m2 : `float`
+        Minimum source-frame secondary mass
+    max_m2 : `float`
+        Maximum source-frame secondary mass
+    alpha_m2 : `float`
+        Power-law index on secondary mass distribution
+    max_a1 : `float`
+        Maximum spin magnitude on primary
+    max_m2 : `float`
+        Maximum spin magnitude on secondary
+    zMax : `float`
+        Maximum redshift
+    kappa : `float`
+        Power-law index governing evolution of the merger rate with redshift
+    conditional_mass : `bool`
+        If `True`, secondary mass distribution is normalized on the range `(min_m2,m1)`. If `False`, normalized on `(min_m2,max_m2)` and results are rejection sampled to enforce `m2<m1`. Default `False`
 
     Returns
     -------
-    draws : `dict`
+    draws : `pandas.DataFrame`
         Dictionary containing randomly drawn component masses, Cartesian spins, sky position,
-        source orientation, distance, and time. Note that the provided masses are in the *source frame*,
-        which differs from the convention used in e.g. `drawing_injections.draw_params()`
+        source orientation, distance, and time. 
     """
-
-    # Parameters governing O3b BBH injection distribution
 
     # Draw random cumulants in the m1 and m2 distribution and use the inverse CDF to translate into m1 and m2 values
     cs_m1 = np.random.random(batch_size)
     cs_m2 = np.random.random(batch_size)
     m1 = (min_m1**(1.+alpha_m1) + cs_m1*(max_m1**(1.+alpha_m1)-min_m1**(1.+alpha_m1)))**(1./(1.+alpha_m1))
 
+    # Draw secondary mass, either independently of or conditioned on primary mass
     if conditional_mass==True:
         m2 = (min_m2**(1.+alpha_m2) + cs_m2*(m1**(1.+alpha_m2)-min_m2**(1.+alpha_m2)))**(1./(1.+alpha_m2))
     else:
@@ -115,6 +133,7 @@ def draw_new_injections(batch_size=1000,
                         'declination':dec,
                         'polarization':pol})
 
+    # If we have not already conditioned on primary mass, reject all draws with m2>m1
     if conditional_mass==False:
         draws = draws[draws.m1_src>draws.m2_src]
 
@@ -130,13 +149,30 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
     ----------
     p_det_emulator : `tf.keras.models.Sequential` or `ANNaverage`
         The network (or list of networks) to be used for prediction
-    input_transformation : `func`
-        A function transforming and rescaling the parameters returned by `draw_new_injections` into the space
-        expected by `p_det_emulator`. See e.g. `input_transform`
+    addDerived_func : `func`
+        Function serving to add any additional required derived parameters to the DataFrame returned by `draw_new_injections`.
+        Should modify the DataFrame in-place.
+    feature_names : `list`
+        List of feature names expected by `p_det_emulator`. Should correspond to columns of DataFrame natively returned by
+        `draw_new_injections` or added by `addDerived_func`
+    scaler : `sklearn.preprocessing.StandardScaler` or `sklearn.preprocessing.QuantileTransformer`
+        Preprocessing scaler applied to features extracted from DataFrame.
     ntotal : `int`
         The total number of requested found injections
     batch_size : `int`
         Size of individual batches in which proposed injections will be drawn and evaluated (default 1000)
+    pop : `string`
+        One of `BBH`, `BNS`, or `NSBH`. Determines how secondary mass is drawn, in accordance with generation of 
+        original O3 injections. Default `BBH`.
+    verbose : `bool`
+        If `True`, additional information will be printed to screen. Default `False`.
+
+    Returns
+    -------
+    all_found : `pandas.DataFrame`
+        Set of new injections labeled as "found"
+    nTrials : `int`
+        Total number of injections drawn in order to yield the set `all_found` of found injections
     """
 
     # Loop until we have the desired number of found injections
@@ -239,19 +275,4 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
 
     return all_found,nTrials
 
-if __name__=="__main__":
 
-    ann1 = build_ann(input_shape=10,layer_width=64,hidden_layers=3,lr=1e-4,leaky_alpha=0.001)
-    ann2 = build_ann(input_shape=10,layer_width=64,hidden_layers=3,lr=1e-4,leaky_alpha=0.001)
-    ann3 = build_ann(input_shape=10,layer_width=64,hidden_layers=3,lr=1e-4,leaky_alpha=0.001)
-    ann1.load_weights('./../data/trained_models/job_21_weights.hdf5')
-    ann2.load_weights('./../data/trained_models/job_72_weights.hdf5')
-    ann3.load_weights('./../data/trained_models/job_97_weights.hdf5')
-    ann_average = ANNaverage([ann1,ann2,ann3])
-
-    with open('./../data/trained_models/job_00_scaler.json','r') as jf:
-        scaler_stats = json.load(jf)
-
-    partial_input_transform = partial(input_transform,scaler_stats=scaler_stats)
-
-    gen_found_injections(ann_average,partial_input_transform,1000)
