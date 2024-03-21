@@ -77,12 +77,13 @@ class ANNaverage():
 def load_training_data(
     data_directory,
     n_bbh = 20000,
-    n_bbh_hopeless = 60000,
-    n_bbh_certain = 20000,
     n_bns = 20000,
-    n_bns_hopeless = 20000,
     n_nsbh = 20000,
+    n_bbh_certain = 20000,
+    n_bbh_hopeless = 60000,
+    n_bns_hopeless = 20000,
     n_nsbh_hopeless = 20000,
+    n_combined_hopeless = 20000,
     rng_key = 111):
 
     generator = default_rng(rng_key)
@@ -133,6 +134,14 @@ def load_training_data(
 
         train_data = pd.concat([train_data,nsbh_hopeless_data])
         val_data = pd.concat([val_data,val_nsbh_hopeless_data])
+
+    if n_combined_hopeless>0:
+
+        combined_hopeless_data = pd.read_hdf('{0}/rpo3-combined-hopeless-alt-formatted.hdf'.format(data_directory)).sample(n_combined_hopeless,random_state=generator)
+        combined_hopeless_data,val_combined_hopeless_data = train_test_split(combined_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+
+        train_data = pd.concat([train_data,combined_hopeless_data])
+        val_data = pd.concat([val_data,val_combined_hopeless_data])
 
     # Read and split certain injections
     if n_bbh_certain>0:

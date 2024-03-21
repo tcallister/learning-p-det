@@ -66,19 +66,24 @@ def read_and_annotate(hfile):
 def mark_detections_certain(hfile,injectionData):
 
     """
-    Helper script to identify certain detections. Takes set of arbitrarily loud injections and randomly assigns some of them as "undetected,"
-    given imperfect detector livetime.
+    Simple helper script to annotate certain detections as found/missed
+
+    Parameters
+    ----------
+    hfile : `str`
+        Filepath to hdf file produced by `gwdistributions` containing certain injections.
+    injectionData : `pandas.DataFrame`
+        Data frame object returned by `read_and_annotate()`.
+        Annotated in-place.
 
     """
 
+    # Probabalitically determine if H1 and L1 were on/off
     H1_off = np.random.random(len(injectionData))<(1.-0.78)
     L1_off = np.random.random(len(injectionData))<(1.-0.78)
-    obs_snr_H1 = hfile['events']['observed_snr_H']
-    obs_snr_L1 = hfile['events']['observed_snr_L']
-    obs_snr_H1[H1_off] = 0
-    obs_snr_L1[L1_off] = 0
-    obs_snr_net = np.sqrt(obs_snr_H1**2 + obs_snr_L1**2)
-    injectionData['obs_snr'] = obs_snr_net
+
+    # If both H1 and L1 are off, mark detection as missed
+    injectionData.loc[:,'detected'] = np.where(H1_off*L1_off,0,1)
 
 def mark_detections_hopeless(injectionData):
 
@@ -88,16 +93,36 @@ def mark_detections_hopeless(injectionData):
     Parameters
     ----------
     injectionData : `pandas.DataFrame`
-        Data frame object returned by `read_and_annotate()`
-
-    injectionData : `pandas.DataFrame`
-        Annotated dataframe with additional column marking all detections as missed.
+        Data frame object returned by `read_and_annotate()`.
+        Annotated in-place with detections marked as missed.
     """
 
-    injectionData = injectionData.loc[injectionData['snr_net']<6,:].copy()
+    # Mark as missed
     injectionData.loc[:,'detected'] = 0
 
-    return injectionData
+def format_and_save_certain(hfile,output):
+
+    """
+    Wrapper function to read, format, and save certain training datasets.
+
+    Parameters
+    ----------
+    hfile : `str`
+        Filepath to hdf file produced by `gwdistributions` containing certain injections
+    output : `str`
+        Filepath at which to save reformatted and annotated data
+    """
+
+    # Open
+    hfile = h5py.File(hfile,'r')
+
+    # Add derived parameters and mark as found/missed
+    certain = read_and_annotate(hfile)
+    mark_detections_certain(hfile,certain)
+
+    # Shuffle and save
+    certain = shuffle(certain)
+    certain.to_hdf(output,'train')
 
 def format_and_save_hopeless(hfile,output):
 
@@ -117,14 +142,29 @@ def format_and_save_hopeless(hfile,output):
 
     # Add derived parameters and mark as missed injections
     hopeless = read_and_annotate(hfile)
-    hopeless = mark_detections_hopeless(hopeless)
+    mark_detections_hopeless(hopeless)
 
     # Shuffle and save
     hopeless = shuffle(hopeless)
     hopeless.to_hdf(output,'train')
 
-format_and_save_hopeless('./../data/rpo3-bbh-without-hopeless-cut.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf')
-format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf','./../data/rpo3-nsbh-hopeless-formatted.hdf')
-format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf','./../data/rpo3-bns-hopeless-formatted.hdf')
-format_and_save_hopeless('./../data/rpo3-combined-hopeless.hdf','./../data/rpo3-combined-hopeless-formatted.hdf')
+if __name__=="__main__":
+
+    # Hopeless
+    format_and_save_hopeless('./../data/rpo3-bbh-without-hopeless-cut.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf','./../data/rpo3-nsbh-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf','./../data/rpo3-bns-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-combined-hopeless.hdf','./../data/rpo3-combined-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-combined-hopeless-alt.hdf','./../data/rpo3-combined-hopeless-alt-formatted.hdf')
+
+    # Certain
+    format_and_save_certain('./../data/rpo3-bbh-certain.hdf','./../data/rpo3-bbh-certain-formatted.hdf')
+    format_and_save_certain('./../data/rpo3-nsbh-certain.hdf','./../data/rpo3-nsbh-certain-formatted.hdf')
+    format_and_save_certain('./../data/rpo3-bns-certain.hdf','./../data/rpo3-bns-certain-formatted.hdf')
+
+
+
+
+
+
 
