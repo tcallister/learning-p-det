@@ -217,7 +217,7 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
             # BNS params
             min_m1=1.0
             max_m1=2.5
-            alpha_m1=1.0
+            alpha_m1=0.0
             min_m2=1.0
             max_m2=2.5
             alpha_m2=0.

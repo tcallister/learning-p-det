@@ -81,7 +81,9 @@ def load_training_data(
     n_nsbh = 20000,
     n_bbh_certain = 20000,
     n_bbh_hopeless = 60000,
+    n_bns_certain = 20000,
     n_bns_hopeless = 20000,
+    n_nsbh_certain = 20000,
     n_nsbh_hopeless = 20000,
     n_combined_hopeless = 20000,
     rng_key = 111):
@@ -90,80 +92,87 @@ def load_training_data(
 
     # Read injections
     bbh_train_data = pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).sample(n_bbh,random_state=generator)
-    bbh_val_data = pd.read_hdf('{0}/bbh_validation_data.hdf'.format(data_directory)).sample(int(n_bbh/4),random_state=generator)
     bns_train_data = pd.read_hdf('{0}/bns_training_data.hdf'.format(data_directory)).sample(n_bns,random_state=generator)
-    bns_val_data = pd.read_hdf('{0}/bns_validation_data.hdf'.format(data_directory)).sample(int(n_bns/4),random_state=generator)
     nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh,random_state=generator)
+
+    # Read pre-prepared validation sets
+    bbh_val_data = pd.read_hdf('{0}/bbh_validation_data.hdf'.format(data_directory)).sample(int(n_bbh/4),random_state=generator)
+    bns_val_data = pd.read_hdf('{0}/bns_validation_data.hdf'.format(data_directory)).sample(int(n_bns/4),random_state=generator)
     nsbh_val_data = pd.read_hdf('{0}/nsbh_validation_data.hdf'.format(data_directory)).sample(int(n_nsbh/4),random_state=generator)
 
-    # Assign class identifiers
-    bbh_train_data['class'] = 0
-    bbh_val_data['class'] = 0
-    bns_train_data['class'] = 1
-    bns_val_data['class'] = 1
-    nsbh_train_data['class'] = 2
-    nsbh_val_data['class'] = 2
-
+    # Concat together
     train_data = pd.concat([bbh_train_data,bns_train_data,nsbh_train_data])
     val_data = pd.concat([bbh_val_data,bns_val_data,nsbh_val_data])
 
     # Read and split hopeless injections
+    # Hopeless BBH
     if n_bbh_hopeless>0:
-
         bbh_hopeless_data = pd.read_hdf('{0}/rpo3-bbh-hopeless-formatted.hdf'.format(data_directory)).sample(n_bbh_hopeless,random_state=generator)
         bbh_hopeless_data,val_bbh_hopeless_data = train_test_split(bbh_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
-
-        bbh_hopeless_data['class'] = 3
-        val_bbh_hopeless_data['class'] = 3
-
         train_data = pd.concat([train_data,bbh_hopeless_data])
         val_data = pd.concat([val_data,val_bbh_hopeless_data])
 
+    # Hopeless BNS
     if n_bns_hopeless>0:
-
         bns_hopeless_data = pd.read_hdf('{0}/rpo3-bns-hopeless-formatted.hdf'.format(data_directory)).sample(n_bns_hopeless,random_state=generator)
         bns_hopeless_data,val_bns_hopeless_data = train_test_split(bns_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
-
         train_data = pd.concat([train_data,bns_hopeless_data])
         val_data = pd.concat([val_data,val_bns_hopeless_data])
 
+    # Hopeless NSBH
     if n_nsbh_hopeless>0:
-
         nsbh_hopeless_data = pd.read_hdf('{0}/rpo3-nsbh-hopeless-formatted.hdf'.format(data_directory)).sample(n_nsbh_hopeless,random_state=generator)
         nsbh_hopeless_data,val_nsbh_hopeless_data = train_test_split(nsbh_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
-
         train_data = pd.concat([train_data,nsbh_hopeless_data])
         val_data = pd.concat([val_data,val_nsbh_hopeless_data])
 
+    # Hopeless auxiliary
     if n_combined_hopeless>0:
-
         combined_hopeless_data = pd.read_hdf('{0}/rpo3-combined-hopeless-alt-formatted.hdf'.format(data_directory)).sample(n_combined_hopeless,random_state=generator)
         combined_hopeless_data,val_combined_hopeless_data = train_test_split(combined_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
-
         train_data = pd.concat([train_data,combined_hopeless_data])
         val_data = pd.concat([val_data,val_combined_hopeless_data])
 
     # Read and split certain injections
+    # Certain BBH
     if n_bbh_certain>0:
 
         bbh_certain_data = pd.read_hdf('{0}/rpo3-bbh-certain-formatted.hdf'.format(data_directory)).sample(n_bbh_certain,random_state=generator)
-        bbh_certain_data['detected'] = 1
-        bbh_certain_data.loc[bbh_certain_data['obs_snr']<=8,'detected'] = 0
 
         # Remove odd events
-        to_clip = (bbh_certain_data.m1_detector<10.*bbh_certain_data.luminosity_distance**1.2)
-        bbh_certain_data.loc[to_clip,'detected'] = 0
+        to_clip = (bbh_certain_data.chirp_mass_detector<10.*bbh_certain_data.luminosity_distance**1.2)
+        bbh_certain_data = bbh_certain_data.drop(bbh_certain_data.loc[to_clip,:].index)
 
-        # Split
+        # Split and add to training data
         bbh_certain_data,val_bbh_certain_data = train_test_split(bbh_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
-
-        bbh_certain_data['class'] = 4
-        val_bbh_certain_data['class'] = 4
-
         train_data = pd.concat([train_data,bbh_certain_data])
         val_data = pd.concat([val_data,val_bbh_certain_data])
 
-    # Append training and validation sets together and shuffle
+    # Certain BNS
+    if n_bns_certain>0:
+
+        bns_certain_data = pd.read_hdf('{0}/rpo3-bns-certain-formatted.hdf'.format(data_directory)).sample(n_bns_certain,random_state=generator)
+
+        # Split and add to training data
+        bns_certain_data,val_bns_certain_data = train_test_split(bns_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+        train_data = pd.concat([train_data,bns_certain_data])
+        val_data = pd.concat([val_data,val_bns_certain_data])
+
+    # Certain NSBH
+    if n_nsbh_certain>0:
+
+        nsbh_certain_data = pd.read_hdf('{0}/rpo3-nsbh-certain-formatted.hdf'.format(data_directory)).sample(n_nsbh_certain,random_state=generator)
+
+        # Remove odd events
+        to_clip = (nsbh_certain_data.chirp_mass_detector<(nsbh_certain_data.luminosity_distance/0.1)**1.4)
+        nsbh_certain_data = nsbh_certain_data.drop(nsbh_certain_data.loc[to_clip,:].index)
+
+        # Split and add to training data
+        nsbh_certain_data,val_nsbh_certain_data = train_test_split(nsbh_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
+        train_data = pd.concat([train_data,nsbh_certain_data])
+        val_data = pd.concat([val_data,val_nsbh_certain_data])
+
+    # Shuffle
     train_data = shuffle(train_data,random_state=generator.integers(0,high=1024))
     val_data = shuffle(val_data,random_state=generator.integers(0,high=1024))
 
