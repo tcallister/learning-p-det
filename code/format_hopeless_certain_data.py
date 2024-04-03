@@ -9,7 +9,7 @@ from sklearn.utils import shuffle
 Script to format and prepare training data sets comprising "certain" detections (will be detected if one or more instruments are on) and "hopeless" detections (no chance of detection).
 """
 
-def read_and_annotate(hfile):
+def read_and_annotate(hfile,hkey='events'):
 
     """
     Helper function to load hdf file prepared by the `gwdistributions` and add necessary derived data.
@@ -27,14 +27,14 @@ def read_and_annotate(hfile):
 
     # Read injection parameters
     injectionData = pd.DataFrame()
-    injectionData['m1_detector'] = np.array(hfile['events']['mass1_detector'][()],dtype='float64')
-    injectionData['m2_detector'] = np.array(hfile['events']['mass2_detector'][()],dtype='float64')
-    injectionData['luminosity_distance'] = hfile['events']['luminosity_distance'][()]/1000. # Convert from Mpc to Gpc
-    injectionData['cos_inclination'] = np.cos(hfile['events']['inclination'])
-    injectionData['right_ascension'] = hfile['events']['right_ascension']
-    injectionData['declination'] = hfile['events']['declination']
-    injectionData['polarization'] = hfile['events']['polarization']
-    injectionData['redshift'] = hfile['events']['z'][()]
+    injectionData['m1_detector'] = np.array(hfile[hkey]['mass1_detector'][()],dtype='float64')
+    injectionData['m2_detector'] = np.array(hfile[hkey]['mass2_detector'][()],dtype='float64')
+    injectionData['luminosity_distance'] = hfile[hkey]['luminosity_distance'][()]/1000. # Convert from Mpc to Gpc
+    injectionData['cos_inclination'] = np.cos(hfile[hkey]['inclination'])
+    injectionData['right_ascension'] = hfile[hkey]['right_ascension']
+    injectionData['declination'] = hfile[hkey]['declination']
+    injectionData['polarization'] = hfile[hkey]['polarization']
+    injectionData['redshift'] = hfile[hkey]['z'][()]
 
     # Some derived mass parameters
     injectionData['q'] = injectionData.m2_detector/injectionData.m1_detector
@@ -43,12 +43,12 @@ def read_and_annotate(hfile):
     injectionData['total_mass_detector'] = (injectionData.m1_detector+injectionData.m2_detector)
 
     # And some derived spin parameters
-    s1x = np.array(hfile['events']['spin1x'])
-    s1y = np.array(hfile['events']['spin1y'])
-    s1z = np.array(hfile['events']['spin1z'])
-    s2x = np.array(hfile['events']['spin2x'])
-    s2y = np.array(hfile['events']['spin2y'])
-    s2z = np.array(hfile['events']['spin2z'])
+    s1x = np.array(hfile[hkey]['spin1x'])
+    s1y = np.array(hfile[hkey]['spin1y'])
+    s1z = np.array(hfile[hkey]['spin1z'])
+    s2x = np.array(hfile[hkey]['spin2x'])
+    s2y = np.array(hfile[hkey]['spin2y'])
+    s2z = np.array(hfile[hkey]['spin2z'])
     injectionData['a1'] = np.sqrt(s1x**2 + s1y**2 + s1z**2)
     injectionData['a2'] = np.sqrt(s2x**2 + s2y**2 + s2z**2)
     injectionData['cost1'] = s1z/injectionData.a1
@@ -58,8 +58,8 @@ def read_and_annotate(hfile):
     injectionData['Xp_gen'] = generalized_Xp(s1x,s1y,s2x,s2y,injectionData.q)
 
     # SNR info
-    injectionData['snr_net'] = hfile['events']['snr_net']
-    injectionData['observed_snr_net'] = hfile['events']['observed_snr_net']
+    injectionData['snr_net'] = hfile[hkey]['snr_net']
+    injectionData['observed_snr_net'] = hfile[hkey]['observed_snr_net']
 
     return injectionData
 
@@ -124,7 +124,7 @@ def format_and_save_certain(hfile,output):
     certain = shuffle(certain)
     certain.to_hdf(output,'train')
 
-def format_and_save_hopeless(hfile,output):
+def format_and_save_hopeless(hfile,output,hkey='events'):
 
     """
     Wrapper function to read, format, and save hopeless training datasets.
@@ -141,7 +141,7 @@ def format_and_save_hopeless(hfile,output):
     hfile = h5py.File(hfile,'r')
 
     # Add derived parameters and mark as missed injections
-    hopeless = read_and_annotate(hfile)
+    hopeless = read_and_annotate(hfile,hkey)
     mark_detections_hopeless(hopeless)
 
     # Shuffle and save
@@ -151,11 +151,10 @@ def format_and_save_hopeless(hfile,output):
 if __name__=="__main__":
 
     # Hopeless
-    format_and_save_hopeless('./../data/rpo3-bbh-without-hopeless-cut.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf')
-    format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf','./../data/rpo3-nsbh-hopeless-formatted.hdf')
-    format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf','./../data/rpo3-bns-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-bbh-hopeless.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf','./../data/rpo3-nsbh-hopeless-formatted.hdf','events/table')
+    format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf','./../data/rpo3-bns-hopeless-formatted.hdf','events/table')
     format_and_save_hopeless('./../data/rpo3-combined-hopeless.hdf','./../data/rpo3-combined-hopeless-formatted.hdf')
-    format_and_save_hopeless('./../data/rpo3-combined-hopeless-alt.hdf','./../data/rpo3-combined-hopeless-alt-formatted.hdf')
 
     # Certain
     format_and_save_certain('./../data/rpo3-bbh-certain.hdf','./../data/rpo3-bbh-certain-formatted.hdf')

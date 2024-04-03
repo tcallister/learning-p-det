@@ -5,7 +5,6 @@ import json
 import pandas as pd
 from functools import partial
 from utilities import ANNaverage,generalized_Xp
-from training_routines import build_ann
 
 def draw_new_injections(batch_size=1000,
         min_m1=2.,
@@ -139,7 +138,7 @@ def draw_new_injections(batch_size=1000,
 
     return draws
 
-def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,ntotal,batch_size=1000,pop='BBH',verbose=False):
+def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,ntotal,batch_size=1000,pop='BBH',verbose=False,jitted=True):
 
     """
     Generates new sets of "found" injections drawn from the O3b BBH injected distribution, labeled
@@ -245,10 +244,14 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
         new_draws_features = new_draws[feature_names]
 
         # Transform to the expected parameter space
-        rescaled_input_parameters = scaler.transform(new_draws_features)
+        if scaler:
+            rescaled_input_parameters = scaler.transform(new_draws_features)
 
         # Evaluate detection probabilities
-        p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
+        if jitted:
+            p_det_predictions = np.array(p_det_emulator(np.array(new_draws_features)).reshape(-1))
+        else:
+            p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
         new_draws['p_det'] = p_det_predictions
         min_new_pdet = min(p_det_predictions)
         if min_new_pdet<min_pdet:

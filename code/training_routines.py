@@ -35,7 +35,8 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
 
         # Return with prior penalizing large probabilities
-        return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(y_pred)
+        print(tf.math.reduce_mean(tf.math.log(y_pred)))
+        return -tf.math.reduce_mean(log_ps - tf.math.log(y_pred))
 
 def scheduler(epoch, lr):
 
