@@ -128,7 +128,7 @@ def load_training_data(
 
     # Hopeless auxiliary
     if n_combined_hopeless>0:
-        combined_hopeless_data = pd.read_hdf('{0}/rpo3-combined-hopeless-alt-formatted.hdf'.format(data_directory)).sample(n_combined_hopeless,random_state=generator)
+        combined_hopeless_data = pd.read_hdf('{0}/rpo3-combined-hopeless-formatted.hdf'.format(data_directory)).sample(n_combined_hopeless,random_state=generator)
         combined_hopeless_data,val_combined_hopeless_data = train_test_split(combined_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
         train_data = pd.concat([train_data,combined_hopeless_data])
         val_data = pd.concat([val_data,val_combined_hopeless_data])

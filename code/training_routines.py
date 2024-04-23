@@ -8,7 +8,8 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
     Custom loss function implementing binomial detection likelihood model
     """
 
-    def __init__(self):
+    def __init__(self,beta=2./3.):
+        self.beta = beta
         super().__init__()
 
     def call(self, y_true, y_pred):
@@ -25,8 +26,8 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         # The log likelihood below diverges numerically if predicted probabilities are too close to unity
         # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
         # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
-        #ceil = tf.ones_like(y_pred)*(1.-1e-10)
-        #y_pred = tf.where(y_pred>1.-1e-10,ceil,y_pred)
+        #ceil = tf.ones_like(y_pred)*(1.-1e-20)
+        #y_pred = tf.where(y_pred>1.-1e-20,ceil,y_pred)
 
         #floor = tf.ones_like(y_pred)*(1e-40)
         #y_pred = tf.where(y_pred<1e-40,floor,y_pred)
@@ -35,7 +36,7 @@ class negativeLogLikelihood(tf.keras.losses.Loss):
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
 
         # Return with prior penalizing large probabilities
-        return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(y_pred)
+        return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
 
 def scheduler(epoch, lr):
 
