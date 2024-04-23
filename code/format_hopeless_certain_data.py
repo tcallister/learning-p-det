@@ -79,11 +79,10 @@ def mark_detections_certain(hfile,injectionData):
     """
 
     # Probabalitically determine if H1 and L1 were on/off
-    H1_off = np.random.random(len(injectionData))<(1.-0.78)
-    L1_off = np.random.random(len(injectionData))<(1.-0.78)
+    both_off = np.random.random(len(injectionData))<0.0589
 
     # If both H1 and L1 are off, mark detection as missed
-    injectionData.loc[:,'detected'] = np.where(H1_off*L1_off,0,1)
+    injectionData.loc[:,'detected'] = np.where(both_off,0,1)
 
 def mark_detections_hopeless(injectionData):
 
@@ -151,7 +150,7 @@ def format_and_save_hopeless(hfile,output,hkey='events'):
 if __name__=="__main__":
 
     # Hopeless
-    format_and_save_hopeless('./../data/rpo3-bbh-hopeless.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/rpo3-bbh-hopeless.hdf','./../data/rpo3-bbh-hopeless-formatted.hdf','events/table')
     format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf','./../data/rpo3-nsbh-hopeless-formatted.hdf','events/table')
     format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf','./../data/rpo3-bns-hopeless-formatted.hdf','events/table')
     format_and_save_hopeless('./../data/rpo3-combined-hopeless.hdf','./../data/rpo3-combined-hopeless-formatted.hdf')
