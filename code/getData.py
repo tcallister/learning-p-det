@@ -1,8 +1,7 @@
 import numpy as np
 from astropy.cosmology import Planck15
 import astropy.units as u
-from population_model import massModel
-import os,sys
+import os
 dirname = os.path.dirname(__file__)
 
 def getInjections():

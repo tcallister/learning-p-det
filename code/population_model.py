@@ -217,7 +217,7 @@ def baseline(sampleDict,injectionDict):
     R_pop_det = R20*p_m1_det*p_m2_det*p_z_det*p_a1_det*p_a2_det*p_cost1_det*p_cost2_det
 
     # Form ratio of proposed weights over draw weights
-    inj_weights = R_pop_det/(p_draw/2.)
+    inj_weights = R_pop_det/(p_draw)
     
     # As a fit diagnostic, compute effective number of injections
     nEff_inj = jnp.sum(inj_weights)**2/jnp.sum(inj_weights**2)
@@ -236,7 +236,6 @@ def baseline(sampleDict,injectionDict):
     # Xeff_sample: Effective spin posterior samples
     # priors: PE priors on each sample
     #def logp(m1_sample,m2_sample,z_sample,dVdz_sample,a1_sample,a2_sample,cost1_sample,cost2_sample,priors):
-    key = numpyro.prng_key()
     def logp(m1_sample,m2_sample,z_sample,dVdz_sample,a1_sample,a2_sample,cost1_sample,cost2_sample,priors):
 
         # Compute proposed population weights
@@ -394,6 +393,8 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     inj_cost2 = mu_cost + sig_cost*sqrt_2*erfinv(inj_cost2_cdfs*(cost_erf_b-cost_erf_a) + cost_erf_a)
 
     # Redshifts
+    #inj_kappa = -1.
+    #reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(inj_kappa-1.)
     reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(kappa-1.)
     reference_cdf_z = jnp.cumsum(reference_f_z)*injectionCDFs['dz']
     reference_f_z_integral = reference_cdf_z[-1]
@@ -415,7 +416,8 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
         injectionCDFs['sin_declination']
         ])
 
-    Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*Pdet(injection_params).T        
+    Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(Pdet(injection_params))
+    #Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(Pdet(injection_params).T*(1.+inj_z)**(kappa-inj_kappa))
     numpyro.factor("rate",-Nexp)
     
     # This function defines the per-event log-likelihood
@@ -426,7 +428,6 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     # Xeff_sample: Effective spin posterior samples
     # priors: PE priors on each sample
     #def logp(m1_sample,m2_sample,z_sample,dVdz_sample,a1_sample,a2_sample,cost1_sample,cost2_sample,priors):
-    key = numpyro.prng_key()
     def logp(m1_sample,m2_sample,z_sample,dVdz_sample,a1_sample,a2_sample,cost1_sample,cost2_sample,priors):
 
         # Compute proposed population weights
