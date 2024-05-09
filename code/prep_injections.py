@@ -7,9 +7,9 @@ from astropy.cosmology import Planck15
 import sys
 import pickle
 
-sys.path.append('/Users/tcallister/Documents/Repositories/effective-spin-priors/')
-from priors import chi_effective_prior_from_isotropic_spins
-from priors import joint_prior_from_isotropic_spins
+#sys.path.append('/Users/tcallister/Documents/Repositories/effective-spin-priors/')
+#from priors import chi_effective_prior_from_isotropic_spins
+#from priors import joint_prior_from_isotropic_spins
 
 def loadInjections(ifar_threshold):
 
@@ -69,13 +69,13 @@ def genInjectionFile(ifar_threshold,filename):
     cost2_det = s2z_det/a2_det
 
     # Compute marginal draw probabilities for chi_effective and joint chi_effective vs. chi_p probabilities
-    p_draw_xeff = np.zeros(Xeff_det.size)
-    p_draw_xeff_xp = np.zeros(Xeff_det.size)
-    for i in range(p_draw_xeff.size):
-        if i%500==0:
-            print(i)
-        p_draw_xeff[i] = chi_effective_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i])
-        p_draw_xeff_xp[i] = joint_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i],Xp_det[i],ndraws=10000)
+    #p_draw_xeff = np.zeros(Xeff_det.size)
+    #p_draw_xeff_xp = np.zeros(Xeff_det.size)
+    #for i in range(p_draw_xeff.size):
+    #    if i%500==0:
+    #        print(i)
+    #    p_draw_xeff[i] = chi_effective_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i])
+    #    p_draw_xeff_xp[i] = joint_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i],Xp_det[i],ndraws=10000)
 
     # Draw probabilities for component spin magnitudes and tilts
     p_draw_a1a2cost1cost2 = (1./2.)**2*(1./0.998)**2*np.ones(a1_det.size)
@@ -103,8 +103,8 @@ def genInjectionFile(ifar_threshold,filename):
             'cost2':cost2_det,
             'dVdz':dVdz,
             'p_draw_m1m2z':p_draw_m1m2z,
-            'p_draw_chiEff':p_draw_xeff,
-            'p_draw_chiEff_chiP':p_draw_xeff_xp,
+            #'p_draw_chiEff':p_draw_xeff,
+            #'p_draw_chiEff_chiP':p_draw_xeff_xp,
             'p_draw_a1a2cost1cost2':p_draw_a1a2cost1cost2,
             'nTrials':nTrials
             }
