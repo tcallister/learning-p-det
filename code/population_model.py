@@ -371,9 +371,9 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     # Define f(m1) over reference grid
     # Use this to obtain the integral over f(m1)/f(m_ref), build CDF, and interpolate to obtain m1 values
     reference_f_m1 = massModel(injectionCDFs['reference_m1_grid'],alpha,mu_m1,sig_m1,10.**log_f_peak,mMax,mMin,10.**log_dmMax,10.**log_dmMin)
-    reference_cdf_m1 = jnp.cumsum(reference_f_m1)*injectionCDFs['dm1']
-    reference_f_m1_integral = reference_cdf_m1[-1]
-    reference_cdf_m1 /= reference_f_m1_integral
+    reference_cdf_m1 = jnp.cumsum(reference_f_m1)*injectionCDFs['dm1']      # This is the cumulative integral of f(m)
+    reference_f_m1_integral = reference_cdf_m1[-1]                          # This is the integral Int(f(m)*dm)
+    reference_cdf_m1 /= reference_f_m1_integral                             # This is cdf(m)
     inj_m1 = jnp.interp(inj_m1_cdfs,reference_cdf_m1,injectionCDFs['reference_m1_grid'])
 
     # Secondary masses
