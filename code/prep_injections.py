@@ -7,9 +7,9 @@ from astropy.cosmology import Planck15
 import sys
 import pickle
 
-sys.path.append('/Users/tcallister/Documents/Repositories/effective-spin-priors/')
-from priors import chi_effective_prior_from_isotropic_spins
-from priors import joint_prior_from_isotropic_spins
+#sys.path.append('/Users/tcallister/Documents/Repositories/effective-spin-priors/')
+#from priors import chi_effective_prior_from_isotropic_spins
+#from priors import joint_prior_from_isotropic_spins
 
 def loadInjections(ifar_threshold):
 

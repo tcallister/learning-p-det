@@ -16,12 +16,14 @@ import astropy.units as u
 import sys
 sys.path.append('../../p-det-O3/')
 from p_det_O3.emulator import p_det_O3
+from scipy.stats.qmc import Sobol
 
 # Get dictionaries holding injections and posterior samples
-sampleDict = getSamples(sample_limit=2000)
+sampleDict = getSamples(sample_limit=3000)
 
 # Set up dictionary with precomputed quantities for sensitivity estimation
-nTrials = int(1e6)
+"""
+nTrials = int(1e5)
 injectionDict = {
     'inj_m1_cdfs':jnp.array(np.random.random(size=nTrials)),
     'inj_m2_cdfs':jnp.array(np.random.random(size=nTrials)),
@@ -31,6 +33,20 @@ injectionDict = {
     'inj_cost2_cdfs':jnp.array(np.random.random(size=nTrials)),
     'inj_z_cdfs':jnp.array(np.random.random(size=nTrials))
     }
+"""
+
+sobol_sampler = Sobol(d=7, scramble=True)
+sobol_samples = jnp.array(sobol_sampler.random_base2(m=18))
+injectionDict = {
+    'inj_m1_cdfs':sobol_samples[:,0],
+    'inj_m2_cdfs':sobol_samples[:,1],
+    'inj_a1_cdfs':sobol_samples[:,2],
+    'inj_a2_cdfs':sobol_samples[:,3],
+    'inj_cost1_cdfs':sobol_samples[:,4],
+    'inj_cost2_cdfs':sobol_samples[:,5],
+    'inj_z_cdfs':sobol_samples[:,6],
+    }
+nTrials = int(2**18)
 
 # Fixed parameters that we'll not vary
 injectionDict['right_ascension'] = jnp.array(2.*np.pi*np.random.random(size=nTrials))
@@ -44,18 +60,19 @@ injectionDict['phi12'] = phi1-phi2
 # Finally, population with reference grids
 injectionDict['reference_m1_grid'] = jnp.linspace(2.,100.,400)
 injectionDict['dm1'] = jnp.diff(injectionDict['reference_m1_grid'])[0]
-injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,1000)
+injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,400)
 injectionDict['dz'] = jnp.diff(injectionDict['reference_z_grid'])[0]
 injectionDict['reference_dVdz_grid'] = 4.*np.pi*Planck15.differential_comoving_volume(injectionDict['reference_z_grid']).to(u.Gpc**3/u.sr).value
 
-p_det = p_det_O3()
+p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/draft_release/job_19_weights.hdf5",
+        scaler="/project/kicp/tcallister/trained_models/draft_release/job_19_input_scaler.pickle")
 
 # Set up NUTS sampler over our likelihood
 kernel = NUTS(baseline_dynamicInjections)
-mcmc = MCMC(kernel,num_warmup=300,num_samples=300,num_chains=nChains)
+mcmc = MCMC(kernel,num_warmup=500,num_samples=1000,num_chains=nChains)
 
 # Choose a random key and run over our model
-rng_key = random.PRNGKey(121)
+rng_key = random.PRNGKey(122)
 rng_key,rng_key_ = random.split(rng_key)
 mcmc.run(rng_key_,sampleDict,injectionDict,p_det)
 mcmc.print_summary()

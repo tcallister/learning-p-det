@@ -1,8 +1,49 @@
 import numpy as np
 from astropy.cosmology import Planck15
 import astropy.units as u
+import pandas as pd
 import os
 dirname = os.path.dirname(__file__)
+
+def getSyntheticInjections():
+
+    newInjections = pd.read_pickle('/home/tcallister/repositories/learning-p-det/code/demo_injections_for_inference.pickle') 
+
+    injectionDict = {}
+    injectionDict['a1'] = newInjections['a1'].values
+    injectionDict['a2'] = newInjections['a2'].values
+    injectionDict['cost1'] = newInjections['cost1'].values
+    injectionDict['cost2'] = newInjections['cost2'].values
+    injectionDict['m1'] = newInjections['m1_src'].values
+    injectionDict['m2'] = newInjections['m2_src'].values
+    injectionDict['z'] = newInjections['redshift'].values
+    injectionDict['dVdz'] = 4.*np.pi*Planck15.differential_comoving_volume(injectionDict['z']).to(u.Gpc**3/u.sr).value
+    injectionDict['nTrials'] = 70140000 #44070000.
+
+    # Draw probabilities
+    min_m1=2.
+    max_m1=100.
+    alpha_m1=-2.35
+    min_m2=2.
+    max_m2=100.
+    alpha_m2=1.
+    max_a1=0.998
+    max_a2=0.998
+    zMax=1.9
+    kappa=1.
+
+    p_m1 = (1.+alpha_m1)*injectionDict['m1']**alpha_m1/(max_m1**(1.+alpha_m1) - min_m1**(1.+alpha_m1))
+    p_m2 = (1.+alpha_m2)*injectionDict['m2']**alpha_m2/(injectionDict['m1']**(1.+alpha_m2) - min_m2**(1.+alpha_m2))
+
+    z_grid = np.linspace(0,1.9,5000)
+    dVdz_grid = 4.*np.pi*Planck15.differential_comoving_volume(z_grid).to(u.Gpc**3/u.sr).value
+    p_z_unnormed = dVdz_grid*(1.+z_grid)**(kappa-1.)
+    p_z_grid = p_z_unnormed/np.trapz(p_z_unnormed,z_grid)
+    p_z = np.interp(injectionDict['z'],z_grid,p_z_grid)
+
+    injectionDict['p_draw_m1m2z'] = p_m1*p_m2*p_z
+    injectionDict['p_draw_a1a2cost1cost2'] = 1./4.
+    return injectionDict
 
 def getInjections():
 
