@@ -180,8 +180,21 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
     min_pdet = 1
     while nfound<=ntotal:
 
+        if type(pop)==dict:
+            min_m1 = pop['min_m1']
+            max_m1 = pop['max_m1']
+            alpha_m1 = pop['alpha_m1']
+            min_m2 = pop['min_m2']
+            max_m2 = pop['max_m2']
+            alpha_m2 = pop['alpha_m2']
+            max_a1 = pop['max_a1']
+            max_a2 = pop['max_a2']
+            zMax = pop['zMax']
+            kappa = pop['kappa']
+            conditional_mass = pop['conditional_mass']
+
         # Draw new injections
-        if pop=='BBH':
+        elif pop=='BBH':
 
             # BBH params
             min_m1=2.

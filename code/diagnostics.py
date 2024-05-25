@@ -85,7 +85,7 @@ def get_pp_data_discrete(predicted_probabilities,detection_labels,p_grid=np.lins
     return p_grid_centers,dC_dN_grid,grid_errors
 
 def ks_test(ann,addDerived,feature_names,input_sc,ndraws,reference_data,population_type,output_prefix,
-            parameters_to_check=None):
+            parameters_to_check=None,jitted=False):
 
     # Draw new events
     found_events,nTrials = gen_found_injections(ann,
@@ -94,7 +94,8 @@ def ks_test(ann,addDerived,feature_names,input_sc,ndraws,reference_data,populati
                             input_sc,
                             ndraws,
                             10000,
-                            pop=population_type)
+                            pop=population_type,
+                            jitted=jitted)
 
     # Load reference training data and extract detections
     train_data_all = pd.read_hdf(reference_data)
