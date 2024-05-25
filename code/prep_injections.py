@@ -23,11 +23,13 @@ def loadInjections(ifar_threshold):
     ifar_1 = mockDetections['injections']['ifar_gstlal'][()]
     ifar_2 = mockDetections['injections']['ifar_pycbc_bbh'][()]
     ifar_3 = mockDetections['injections']['ifar_pycbc_hyperbank'][()]
+    ifar_4 = mockDetections['injections']['ifar_cwb'][()]
+    ifar_5 = mockDetections['injections']['ifar_mbta'][()]
 
     print(np.max(np.concatenate([ifar_1,ifar_2,ifar_3])))
 
     # Determine which events pass IFAR threshold (O3) or SNR threshold (O1/O2)
-    detected_full = np.where((ifar_1>ifar_threshold) | (ifar_2>ifar_threshold) | (ifar_3>ifar_threshold))[0]
+    detected_full = np.where((ifar_1>ifar_threshold) | (ifar_2>ifar_threshold) | (ifar_3>ifar_threshold)| (ifar_4>ifar_threshold) | (ifar_5>ifar_threshold))[0]
 
     # Get properties of detected sources
     m1_det = np.array(mockDetections['injections']['mass1_source'][()])[detected_full]
@@ -69,21 +71,23 @@ def genInjectionFile(ifar_threshold,filename):
     cost2_det = s2z_det/a2_det
 
     # Compute marginal draw probabilities for chi_effective and joint chi_effective vs. chi_p probabilities
-    #p_draw_xeff = np.zeros(Xeff_det.size)
-    #p_draw_xeff_xp = np.zeros(Xeff_det.size)
-    #for i in range(p_draw_xeff.size):
-    #    if i%500==0:
-    #        print(i)
-    #    p_draw_xeff[i] = chi_effective_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i])
-    #    p_draw_xeff_xp[i] = joint_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i],Xp_det[i],ndraws=10000)
+    """
+    p_draw_xeff = np.zeros(Xeff_det.size)
+    p_draw_xeff_xp = np.zeros(Xeff_det.size)
+    for i in range(p_draw_xeff.size):
+        if i%500==0:
+            print(i)
+        p_draw_xeff[i] = chi_effective_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i])
+        p_draw_xeff_xp[i] = joint_prior_from_isotropic_spins(q_det[i],1.,Xeff_det[i],Xp_det[i],ndraws=10000)
+    """
 
     # Draw probabilities for component spin magnitudes and tilts
     p_draw_a1a2cost1cost2 = (1./2.)**2*(1./0.998)**2*np.ones(a1_det.size)
 
     # Combine
-    pop_reweight = 1./(p_draw_m1m2z*p_draw_xeff_xp)
-    pop_reweight_XeffOnly = 1./(p_draw_m1m2z*p_draw_xeff)
-    pop_reweight_noSpin = 1./p_draw_m1m2z
+    #pop_reweight = 1./(p_draw_m1m2z*p_draw_xeff_xp)
+    #pop_reweight_XeffOnly = 1./(p_draw_m1m2z*p_draw_xeff)
+    #pop_reweight_noSpin = 1./p_draw_m1m2z
 
     # Also compute factors of dVdz that we will need to reweight these samples during inference later on
     dVdz = 4.*np.pi*Planck15.differential_comoving_volume(z_det).to(u.Gpc**3*u.sr**(-1)).value
