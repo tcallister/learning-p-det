@@ -90,10 +90,25 @@ def load_training_data(
 
     generator = default_rng(rng_key)
 
+    ##### TEST
+    ##### Sample and reweight
+    """
+    bbh_train_data_raw = pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory))
+    zs = bbh_train_data_raw.redshift
+    m1_det = bbh_train_data_raw.m1_detector
+    m1_src = m1_det/(1.+zs)
+    #m1 = bbh_train_data_raw.pri
+    ws = (1.+zs)**2/m1_src
+    print(np.sum(ws)**2/np.sum(ws**2))
+    bbh_train_data = bbh_train_data_raw.sample(n_bbh,weights=ws,random_state=generator)
+    """
+
     # Read injections
     bbh_train_data = pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).sample(n_bbh,random_state=generator)
     bns_train_data = pd.read_hdf('{0}/bns_training_data.hdf'.format(data_directory)).sample(n_bns,random_state=generator)
     nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh,random_state=generator)
+
+    #print(pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).shape)
 
     # Read pre-prepared validation sets
     bbh_val_data = pd.read_hdf('{0}/bbh_validation_data.hdf'.format(data_directory)).sample(int(n_bbh/4),random_state=generator)
@@ -111,6 +126,8 @@ def load_training_data(
         bbh_hopeless_data,val_bbh_hopeless_data = train_test_split(bbh_hopeless_data,train_size=0.8,random_state=generator.integers(0,high=1024))
         train_data = pd.concat([train_data,bbh_hopeless_data])
         val_data = pd.concat([val_data,val_bbh_hopeless_data])
+
+    #print(pd.read_hdf('{0}/rpo3-bbh-hopeless-formatted.hdf'.format(data_directory)).shape)
 
     # Hopeless BNS
     if n_bns_hopeless>0:
@@ -133,6 +150,8 @@ def load_training_data(
         train_data = pd.concat([train_data,combined_hopeless_data])
         val_data = pd.concat([val_data,val_combined_hopeless_data])
 
+    print(pd.read_hdf('{0}/rpo3-combined-hopeless-formatted.hdf'.format(data_directory)).shape)
+
     # Read and split certain injections
     # Certain BBH
     if n_bbh_certain>0:
@@ -147,6 +166,8 @@ def load_training_data(
         bbh_certain_data,val_bbh_certain_data = train_test_split(bbh_certain_data,train_size=0.8,random_state=generator.integers(0,high=1024))
         train_data = pd.concat([train_data,bbh_certain_data])
         val_data = pd.concat([val_data,val_bbh_certain_data])
+
+    #print(pd.read_hdf('{0}/rpo3-bbh-certain-formatted.hdf'.format(data_directory)).shape)
 
     # Certain BNS
     if n_bns_certain>0:
@@ -180,5 +201,5 @@ def load_training_data(
 
 if __name__=="__main__":
     
-    load_training_data(rng_key=12)
+    load_training_data(data_directory='/project/kicp/tcallister/learning-p-det-data/input_data/',rng_key=12)
 

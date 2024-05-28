@@ -55,9 +55,12 @@ def build_ann(input_shape=9,
         lr=1e-3,
         activation='ReLU',
         leaky_alpha=0.01,
+        kernel_init='Glorot',
+        bias_init='Zeros',
         dropout=True,
         dropout_rate=0.5,
-        output_bias=None):
+        output_bias=None,
+        output_activation='sigmoid'):
 
     """
     Function to construct and return an ANN object, to be subsequently trained or into which
@@ -82,39 +85,46 @@ def build_ann(input_shape=9,
         Compiled ANN object
     """
 
-    # Initialize a sequential ANN object and create an initial hidden layer
-    ann = tf.keras.models.Sequential()
-    ann.add(tf.keras.layers.Dense(units=layer_width, input_shape=(input_shape,),
-                                  kernel_initializer=initializers.GlorotUniform(),
-                                  bias_initializer=initializers.Zeros()))
-            
+    if kernel_init=='Glorot':
+        kernel_init = initializers.GlorotUniform()
+
+    if bias_init=='Zeros':
+        bias_init = initializers.Zeros()
+
     # Activation function
     if activation=='ReLU':
-        ann.add(tf.keras.layers.ReLU())
+        act = tf.keras.layers.ReLU()
     elif activation=='LeakyReLU':
-        ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
+        act = tf.keras.layers.LeakyReLU(alpha=leaky_alpha)
     elif activation=='ELU':
-        ann.add(tf.keras.layers.ELU())
+        act = tf.keras.layers.ELU()
+    elif activation=='sigmoid':
+        act = tf.keras.layers.Activation('sigmoid')
+    elif activation=='swish':
+        act = tf.keras.layers.Activation('swish')
     else:
         print("Activation not recognized!")
         sys.exit()
+
+    # Initialize a sequential ANN object and create an initial hidden layer
+    ann = tf.keras.models.Sequential()
+    ann.add(tf.keras.layers.Dense(units=layer_width, input_shape=(input_shape,),
+                                  kernel_initializer=kernel_init,
+                                  bias_initializer=bias_init))
+
+    # Activation function
+    ann.add(act)
 
     # Add the specified number of additional hidden layers, each with another activation
     for i in range(hidden_layers-1):
 
         # Dense layer
         ann.add(tf.keras.layers.Dense(units=layer_width,
-                                  kernel_initializer=initializers.GlorotUniform(),
-                                  bias_initializer=initializers.Zeros()))
+                                  kernel_initializer=kernel_init,
+                                  bias_initializer=bias_init))
 
         # Activation
-        if activation=='ReLU':
-            ann.add(tf.keras.layers.ReLU())
-        elif activation=='LeakyReLU':
-            ann.add(tf.keras.layers.LeakyReLU(alpha=leaky_alpha))
-        elif activation=='ELU':
-            ann.add(tf.keras.layers.ELU())
-
+        ann.add(act)
 
     # Add dropout, if specified
     if dropout:
@@ -124,7 +134,18 @@ def build_ann(input_shape=9,
     # Final output layer with sigmoid activation
     if output_bias is not None:
         output_bias = tf.keras.initializers.Constant(output_bias)
-    ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation='sigmoid'))
+
+    if output_activation=='negative_exponential':
+        def neg_exp_activation(x):
+            return -tf.exp(x)
+        output_activation=neg_exp_activation
+
+    elif output_activation=='scaled_sigmoid':
+        def scaled_sigmoid(x):
+            return (1.-0.0589) * tf.nn.sigmoid(x)
+        output_activation=scaled_sigmoid
+
+    ann.add(tf.keras.layers.Dense(units=1,bias_initializer=output_bias,activation=output_activation))
     
     # Other setup
     if not loss:

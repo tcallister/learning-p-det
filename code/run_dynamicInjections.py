@@ -64,10 +64,8 @@ injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,400)
 injectionDict['dz'] = jnp.diff(injectionDict['reference_z_grid'])[0]
 injectionDict['reference_dVdz_grid'] = 4.*np.pi*Planck15.differential_comoving_volume(injectionDict['reference_z_grid']).to(u.Gpc**3/u.sr).value
 
-#p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/draft_release/job_19_weights.hdf5",
-#        scaler="/project/kicp/tcallister/trained_models/draft_release/job_19_input_scaler.pickle")
-p_det = p_det_O3(model_weights="/home/tcallister/repositories/p-det-O3/trained_weights/job_83_weights.hdf5",
-        scaler="/home/tcallister/repositories/p-det-O3/trained_weights/job_83_input_scaler.pickle")
+p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_16_weights.hdf5",
+        scaler="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_16_input_scaler.pickle")
 
 # Set up NUTS sampler over our likelihood
 kernel = NUTS(baseline_dynamicInjections)
