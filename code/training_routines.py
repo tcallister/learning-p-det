@@ -283,9 +283,11 @@ class NeuralNetworkWrapper:
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
         # Define early stopping parameters
-        patience = 10
         best_val_loss = float('inf')
+        best_epoch = 0
+        best_weights = None
         wait = 0
+        patience = 10
 
         def train_step(x,y):
 
@@ -315,14 +317,18 @@ class NeuralNetworkWrapper:
             val_loss = np.mean([self.loss(y, self.model(x, training=False)) for x, y in self.test_data])
             print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
 
+            self.loss_history.append(loss)
+            self.val_loss_history.append(val_loss)
+
             # Check for early stopping
             if val_loss < best_val_loss:
+                best_epoch = epoch
                 best_val_loss = val_loss
+                best_weights = self.model.get_weights()
                 wait = 0
             else:
                 wait += 1
                 if wait >= patience:
+                    print("Early stopping, reverting to best epoch: {}".format(best_epoch))
+                    self.model.set_weights(best_weights)
                     break  # Early stopping condition met
-
-            self.loss_history.append(loss)
-            self.val_loss_history.append(val_loss)
