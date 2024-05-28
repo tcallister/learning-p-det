@@ -218,6 +218,10 @@ class NeuralNetworkWrapper:
         self.test_data = None
         self.auxiliary_data = None
 
+        # Training history
+        self.loss_history = []
+        self.val_loss_history = []
+
     def build_model(self):
 
         """
@@ -262,8 +266,8 @@ class NeuralNetworkWrapper:
                 ann.add(tf.keras.layers.ELU())
         
         # Add dropout, if specified
-        if self.dropout:
-            ann.add(tf.keras.layers.Dropout(self.dropout_rate))
+        #if self.dropout:
+        #    ann.add(tf.keras.layers.Dropout(self.dropout_rate))
         
         # Add output bias, if specified
         if self.output_bias is not None:
@@ -280,6 +284,8 @@ class NeuralNetworkWrapper:
                     train_data_output,
                     test_data_input,
                     test_data_output):
+
+        print(train_data_input.shape,train_data_output.shape)
         
         # Create a tf.data.Dataset for the training data
         train_dataset = tf.data.Dataset.from_tensor_slices((train_data_input,train_data_output))
@@ -298,33 +304,52 @@ class NeuralNetworkWrapper:
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
         # Define early stopping parameters
-        patience = 10
         best_val_loss = float('inf')
+        best_epoch = 0
+        best_weights = None
         wait = 0
+        patience = 10
+
+        def train_step(x,y):
+
+            with tf.GradientTape() as tape:
+
+                # Run the model on the training data
+                y_pred_train = (self.model(x_batch_train, training=True))
+
+                # Compute the loss using both the training predictions and the external predictions
+                loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
+
+            grads = tape.gradient(loss_value, self.model.trainable_weights)
+            optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
+            return loss_value
 
         # Custom training loop
         for epoch in range(epochs):
+
+            epoch_losses = []
+
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
-                with tf.GradientTape() as tape:
-
-                    # Run the model on the training data
-                    y_pred_train = tf.squeeze(self.model(x_batch_train, training=True))
-
-                    # Compute the loss using both the training predictions and the external predictions
-                    loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
-
-                grads = tape.gradient(loss_value, self.model.trainable_weights)
-                optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
-
+                loss_value = train_step(x_batch_train, y_batch_train)
+                epoch_losses.append(loss_value)
+                
             # Compute validation loss at the end of the epoch
+            loss = np.mean(epoch_losses)
             val_loss = np.mean([self.loss(y, self.model(x, training=False)) for x, y in self.test_data])
-            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss_value, val_loss))
+            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
+
+            self.loss_history.append(loss)
+            self.val_loss_history.append(val_loss)
 
             # Check for early stopping
             if val_loss < best_val_loss:
+                best_epoch = epoch
                 best_val_loss = val_loss
+                best_weights = self.model.get_weights()
                 wait = 0
             else:
                 wait += 1
                 if wait >= patience:
+                    print("Early stopping, reverting to best epoch: {}".format(best_epoch))
+                    self.model.set_weights(best_weights)
                     break  # Early stopping condition met

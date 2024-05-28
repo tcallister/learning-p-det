@@ -265,6 +265,7 @@ def gen_found_injections(p_det_emulator,addDerived_func,feature_names,scaler,nto
             p_det_predictions = np.array(p_det_emulator(np.array(new_draws_features).T).reshape(-1))
         else:
             p_det_predictions = p_det_emulator.predict(rescaled_input_parameters,verbose=0).reshape(-1)
+        
         new_draws['p_det'] = p_det_predictions
         min_new_pdet = min(p_det_predictions)
         if min_new_pdet<min_pdet:
