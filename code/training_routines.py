@@ -197,6 +197,10 @@ class NeuralNetworkWrapper:
         self.test_data = None
         self.auxiliary_data = None
 
+        # Training history
+        self.loss_history = []
+        self.val_loss_history = []
+
     def build_model(self):
 
         """
@@ -241,8 +245,8 @@ class NeuralNetworkWrapper:
                 ann.add(tf.keras.layers.ELU())
         
         # Add dropout, if specified
-        if self.dropout:
-            ann.add(tf.keras.layers.Dropout(self.dropout_rate))
+        #if self.dropout:
+        #    ann.add(tf.keras.layers.Dropout(self.dropout_rate))
         
         # Add output bias, if specified
         if self.output_bias is not None:
@@ -259,6 +263,8 @@ class NeuralNetworkWrapper:
                     train_data_output,
                     test_data_input,
                     test_data_output):
+
+        print(train_data_input.shape,train_data_output.shape)
         
         # Create a tf.data.Dataset for the training data
         train_dataset = tf.data.Dataset.from_tensor_slices((train_data_input,train_data_output))
@@ -283,6 +289,9 @@ class NeuralNetworkWrapper:
 
         # Custom training loop
         for epoch in range(epochs):
+
+            epoch_losses = []
+
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
                 with tf.GradientTape() as tape:
 
@@ -291,13 +300,15 @@ class NeuralNetworkWrapper:
 
                     # Compute the loss using both the training predictions and the external predictions
                     loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
+                    epoch_losses.append(loss_value)
 
                 grads = tape.gradient(loss_value, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
 
             # Compute validation loss at the end of the epoch
+            loss = np.mean(epoch_losses)
             val_loss = np.mean([self.loss(y, self.model(x, training=False)) for x, y in self.test_data])
-            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss_value, val_loss))
+            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
 
             # Check for early stopping
             if val_loss < best_val_loss:
@@ -307,3 +318,6 @@ class NeuralNetworkWrapper:
                 wait += 1
                 if wait >= patience:
                     break  # Early stopping condition met
+
+            self.loss_history.append(loss)
+            self.val_loss_history.append(val_loss)
