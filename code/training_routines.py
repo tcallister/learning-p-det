@@ -287,24 +287,29 @@ class NeuralNetworkWrapper:
         best_val_loss = float('inf')
         wait = 0
 
+        def train_step(x,y):
+
+            with tf.GradientTape() as tape:
+
+                # Run the model on the training data
+                y_pred_train = (self.model(x_batch_train, training=True))
+
+                # Compute the loss using both the training predictions and the external predictions
+                loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
+
+            grads = tape.gradient(loss_value, self.model.trainable_weights)
+            optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
+            return loss_value
+
         # Custom training loop
         for epoch in range(epochs):
 
             epoch_losses = []
 
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
-                with tf.GradientTape() as tape:
-
-                    # Run the model on the training data
-                    y_pred_train = tf.squeeze(self.model(x_batch_train, training=True))
-
-                    # Compute the loss using both the training predictions and the external predictions
-                    loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
-                    epoch_losses.append(loss_value)
-
-                grads = tape.gradient(loss_value, self.model.trainable_weights)
-                optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
-
+                loss_value = train_step(x_batch_train, y_batch_train)
+                epoch_losses.append(loss_value)
+                
             # Compute validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
             val_loss = np.mean([self.loss(y, self.model(x, training=False)) for x, y in self.test_data])
