@@ -2,6 +2,7 @@ import tensorflow as tf
 tf.keras.backend.set_floatx('float64')
 from tensorflow.keras import initializers
 from utilities import load_training_data
+from draw_new_injections import draw_new_injections
 import numpy as np
 from tqdm import tqdm
 
@@ -40,6 +41,39 @@ class NegativeLogLikelihood(tf.keras.losses.Loss):
 
         # Return with prior penalizing large probabilities
         return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
+    
+def NegativeLogLikelihoodAugmented(y_true, y_pred, efficiency_mismatches=None):
+
+    """
+    Parameters
+    ----------
+    y_true : `list`
+        True missed/found labels (0/1 respectively)
+    y_pred : `list`
+        Corresponding set of predicted detection probabilities
+    """
+
+    # The log likelihood below diverges numerically if predicted probabilities are too close to unity
+    # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
+    # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
+    #ceil = tf.ones_like(y_pred)*(1.-1e-20)
+    #y_pred = tf.where(y_pred>1.-1e-20,ceil,y_pred)
+
+    #floor = tf.ones_like(y_pred)*(1e-40)
+    #y_pred = tf.where(y_pred<1e-40,floor,y_pred)
+
+    # Binomial log likelihood (aka cross-entropy loss fucntion)
+    log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
+
+    # Return with prior penalizing large probabilities
+    term1 = -tf.math.reduce_mean(log_ps)
+
+    if efficiency_mismatches:
+       term2 = tf.math.reduce_sum(efficiency_mismatches/(2.*0.00001**2))
+    else:
+        term2 = 0.
+
+    return term1+term2
 
 def scheduler(epoch, lr):
 
@@ -216,7 +250,7 @@ class NeuralNetworkWrapper:
         # Initialize training and testing data
         self.train_data = None
         self.test_data = None
-        self.auxiliary_data = None
+        self.auxiliary_data = []
 
         # Training history
         self.loss_history = []
@@ -234,6 +268,17 @@ class NeuralNetworkWrapper:
             Compiled ANN object
         """
 
+        # Set up chosen properties
+        if self.activation == 'ReLU':
+            activation = tf.keras.layers.ReLU()
+        elif self.activation == 'LeakyReLU':
+            activation = tf.keras.layers.LeakyReLU(alpha=self.leaky_alpha)
+        elif self.activation == 'ELU':
+            activation = tf.keras.layers.ELU()
+        else:
+            print("Activation not recognized!")
+            sys.exit()
+
         # Initialize a sequential ANN object and create an initial hidden layer
         ann = tf.keras.models.Sequential()
         ann.add(tf.keras.layers.Dense(units=self.layer_width,
@@ -241,37 +286,23 @@ class NeuralNetworkWrapper:
                                       kernel_initializer=initializers.RandomNormal(mean=0., stddev=0.01),
                                       bias_initializer=initializers.Zeros()))
         
-        # Activation function
-        if self.activation == 'ReLU':
-            ann.add(tf.keras.layers.ReLU())
-        elif self.activation == 'LeakyReLU':
-            ann.add(tf.keras.layers.LeakyReLU(alpha=self.leaky_alpha))
-        elif self.activation == 'ELU':
-            ann.add(tf.keras.layers.ELU())
-        else:
-            print("Activation not recognized!")
-            sys.exit()
+        # Add activation function
+        ann.add(activation) 
         
         # Add the specified number of additional hidden layers, each with another activation
         for i in range(self.hidden_layers-1):
+
             ann.add(tf.keras.layers.Dense(units=self.layer_width,
                                             kernel_initializer=initializers.RandomNormal(mean=0., stddev=0.01),
                                             bias_initializer=initializers.Zeros()))
-            
-            if self.activation == 'ReLU':
-                ann.add(tf.keras.layers.ReLU())
-            elif self.activation == 'LeakyReLU':
-                ann.add(tf.keras.layers.LeakyReLU(alpha=self.leaky_alpha))
-            elif self.activation == 'ELU':
-                ann.add(tf.keras.layers.ELU())
+
+            ann.add(activation)
         
-        # Add dropout, if specified
-        #if self.dropout:
-        #    ann.add(tf.keras.layers.Dropout(self.dropout_rate))
-        
-        # Add output bias, if specified
+        # Prepare output bias, if specified
         if self.output_bias is not None:
             output_bias = tf.keras.initializers.Constant(self.output_bias)
+        else:
+            output_bias = 0.
         
         # Final output layer with sigmoid activation
         def scaled_sigmoid(x):
@@ -286,19 +317,79 @@ class NeuralNetworkWrapper:
                     train_data_output,
                     test_data_input,
                     test_data_output):
+        """
+        Prepare the training and validation data for the model.
 
-        print(train_data_input.shape,train_data_output.shape)
+        Parameters
+        ----------
+        batch_size : `int`
+            Number of samples per batch
+        train_data_input : `numpy.ndarray`
+            Array of data to serve as inputs for neural network during training
+        train_data_output : `numpy.ndarray`
+            Array of data to serve as outputs for neural network during training
+        test_data_input : `numpy.ndarray`
+            Array of data to serve as inputs for neural network during testing
+        test_data_output : `numpy.ndarray`
+            Array of data to serve as outputs for neural network during testing
+
+        Returns
+        -------
+        None
+        """
+        print(train_data_input.shape, train_data_output.shape)
         
         # Create a tf.data.Dataset for the training data
-        train_dataset = tf.data.Dataset.from_tensor_slices((train_data_input,train_data_output))
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_data_input, train_data_output))
         train_dataset = train_dataset.shuffle(buffer_size=len(train_dataset)).batch(batch_size)
 
         # Create a tf.data.Dataset for the validation data
-        val_dataset = tf.data.Dataset.from_tensor_slices((test_data_input,test_data_output))
+        val_dataset = tf.data.Dataset.from_tensor_slices((test_data_input, test_data_output))
         val_dataset = val_dataset.batch(batch_size)
 
+        # Save as attributes
         self.train_data = train_dataset
         self.test_data = val_dataset
+
+    def draw_from_reference_population(self,
+                                       parameter_dict,
+                                       n_draws,
+                                       target_efficiency,
+                                       addDerived,
+                                       feature_names,
+                                       scaler):
+
+        """
+        Function to draw from a reference population of synthetic data, to be used for
+        auxiliary training data
+
+        Parameters
+        ----------
+        parameter_dict : `dict`
+            Dictionary of parameters to be used for generating new event draws
+        n_draws : `int`
+            Number of synthetic samples to draw
+        target_efficiency : `float`
+            Target recovery efficiency for the synthetic samples
+        addDerived : `function`
+            Function to add derived features to the synthetic samples
+        feature_names : `list`
+            List of feature names to be used for training
+        scaler : `sklearn.preprocessing.StandardScaler`
+            Scaler object to transform synthetic samples
+
+        Returns
+        -------
+        None
+        """
+
+        # Draw new samples, extract training features, and transform
+        new_draws = draw_new_injections(batch_size=n_draws, **parameter_dict)
+        addDerived(new_draws)
+        new_draws = scaler.transform(new_draws[feature_names])
+
+        # Save draws and target recovery efficiency to class' auxiliary data
+        self.auxiliary_data.append((tf.convert_to_tensor(new_draws), target_efficiency))
     
     def train_model(self, epochs):
 
@@ -319,8 +410,15 @@ class NeuralNetworkWrapper:
                 # Run the model on the training data
                 y_pred_train = (self.model(x_batch_train, training=True))
 
+                auxiliary_preds = self.model(self.auxiliary_data[0][0], training=True)
+                efficiency = tf.reduce_mean(auxiliary_preds)
+                efficiency_mismatch = (efficiency-self.auxiliary_data[0][1])**2
+
+                ##efficiency_mismatch = [(tf.reduce_mean(self.model(x, training=True))-f)**2 for x,f in self.auxiliary_data]
+                ##print(efficiency_mismatch)
+
                 # Compute the loss using both the training predictions and the external predictions
-                loss_value = self.loss(y_batch_train, y_pred_train)#, y_pred_external)
+                loss_value = self.loss(y_batch_train, y_pred_train, efficiency_mismatch)
 
             grads = tape.gradient(loss_value, self.model.trainable_weights)
             optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
