@@ -238,7 +238,7 @@ class NeuralNetworkWrapper:
         ann = tf.keras.models.Sequential()
         ann.add(tf.keras.layers.Dense(units=self.layer_width,
                                       input_shape=(self.input_shape,),
-                                      kernel_initializer=initializers.GlorotUniform(),
+                                      kernel_initializer=initializers.RandomNormal(mean=0., stddev=0.01),
                                       bias_initializer=initializers.Zeros()))
         
         # Activation function
@@ -255,7 +255,7 @@ class NeuralNetworkWrapper:
         # Add the specified number of additional hidden layers, each with another activation
         for i in range(self.hidden_layers-1):
             ann.add(tf.keras.layers.Dense(units=self.layer_width,
-                                            kernel_initializer=initializers.GlorotUniform(),
+                                            kernel_initializer=initializers.RandomNormal(mean=0., stddev=0.01),
                                             bias_initializer=initializers.Zeros()))
             
             if self.activation == 'ReLU':
@@ -274,7 +274,9 @@ class NeuralNetworkWrapper:
             output_bias = tf.keras.initializers.Constant(self.output_bias)
         
         # Final output layer with sigmoid activation
-        ann.add(tf.keras.layers.Dense(units=1, bias_initializer=output_bias, activation='sigmoid'))
+        def scaled_sigmoid(x):
+            return (1.-0.0589) * tf.nn.sigmoid(x)
+        ann.add(tf.keras.layers.Dense(units=1, bias_initializer=output_bias, activation=scaled_sigmoid))
         
         return ann
     
