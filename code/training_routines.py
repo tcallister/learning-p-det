@@ -42,7 +42,7 @@ class NegativeLogLikelihood(tf.keras.losses.Loss):
         # Return with prior penalizing large probabilities
         return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
     
-def NegativeLogLikelihoodAugmented(y_true, y_pred, efficiency_mismatches=None):
+def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, std, efficiency_mismatches=None):
 
     """
     Parameters
@@ -69,11 +69,11 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, efficiency_mismatches=None):
     term1 = -tf.math.reduce_mean(log_ps)
 
     if efficiency_mismatches:
-       term2 = tf.math.reduce_sum(efficiency_mismatches/(2.*0.00001**2))
+       term2 = tf.math.reduce_sum(efficiency_mismatches/(2.*std**2))
     else:
         term2 = 0.
 
-    return term1+term2
+    return term1+term2+tf.math.reduce_mean(beta*y_pred)
 
 def scheduler(epoch, lr):
 
@@ -391,7 +391,7 @@ class NeuralNetworkWrapper:
         # Save draws and target recovery efficiency to class' auxiliary data
         self.auxiliary_data.append((tf.convert_to_tensor(new_draws), target_efficiency))
     
-    def train_model(self, epochs):
+    def train_model(self, epochs, beta, std):
 
         # Define optimizer
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
@@ -418,7 +418,7 @@ class NeuralNetworkWrapper:
                 ##print(efficiency_mismatch)
 
                 # Compute the loss using both the training predictions and the external predictions
-                loss_value = self.loss(y_batch_train, y_pred_train, efficiency_mismatch)
+                loss_value = self.loss(y_batch_train, y_pred_train, beta, std, efficiency_mismatch)
 
             grads = tape.gradient(loss_value, self.model.trainable_weights)
             optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
@@ -435,7 +435,7 @@ class NeuralNetworkWrapper:
                 
             # Compute validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
-            val_loss = np.mean([self.loss(y, self.model(x, training=False)) for x, y in self.test_data])
+            val_loss = np.mean([self.loss(y, self.model(x, training=False), beta, std) for x, y in self.test_data])
             print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
 
             self.loss_history.append(loss)
