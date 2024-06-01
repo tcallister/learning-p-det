@@ -68,7 +68,7 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, std, efficiency_mismatc
     # Return with prior penalizing large probabilities
     term1 = -tf.math.reduce_mean(log_ps)
 
-    if efficiency_mismatches:
+    if efficiency_mismatches!=None:
        term2 = tf.math.reduce_sum(efficiency_mismatches/(2.*std**2))
     else:
         term2 = 0.
@@ -410,12 +410,12 @@ class NeuralNetworkWrapper:
                 # Run the model on the training data
                 y_pred_train = (self.model(x_batch_train, training=True))
 
-                auxiliary_preds = self.model(self.auxiliary_data[0][0], training=True)
-                efficiency = tf.reduce_mean(auxiliary_preds)
-                efficiency_mismatch = (efficiency-self.auxiliary_data[0][1])**2
+                efficiencies = tf.reduce_mean(
+                                   [self.model(auxiliary_data[0], training=True) for auxiliary_data in self.auxiliary_data],
+                                   axis=1)
 
-                ##efficiency_mismatch = [(tf.reduce_mean(self.model(x, training=True))-f)**2 for x,f in self.auxiliary_data]
-                ##print(efficiency_mismatch)
+                target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                efficiency_mismatch = (efficiencies-target_efficiencies)**2
 
                 # Compute the loss using both the training predictions and the external predictions
                 loss_value = self.loss(y_batch_train, y_pred_train, beta, std, efficiency_mismatch)
