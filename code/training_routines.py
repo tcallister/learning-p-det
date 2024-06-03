@@ -42,7 +42,7 @@ class NegativeLogLikelihood(tf.keras.losses.Loss):
         # Return with prior penalizing large probabilities
         return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
     
-def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, std, efficiency_mismatches=None):
+def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=None):
 
     """
     Parameters
@@ -69,7 +69,7 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, std, efficiency_mismatc
     term1 = -tf.math.reduce_mean(log_ps)
 
     if efficiency_mismatches!=None:
-       term2 = tf.math.reduce_sum(efficiency_mismatches/(2.*std**2))
+       term2 = tf.math.reduce_sum(efficiency_mismatches/2.)
     else:
         term2 = 0.
 
@@ -388,10 +388,14 @@ class NeuralNetworkWrapper:
         addDerived(new_draws)
         new_draws = scaler.transform(new_draws[feature_names])
 
+        # Expected standard deviation in recovered draws
+        std = np.sqrt(target_efficiency/n_draws)
+        print("Expected std:",std)
+
         # Save draws and target recovery efficiency to class' auxiliary data
-        self.auxiliary_data.append((tf.convert_to_tensor(new_draws), target_efficiency))
+        self.auxiliary_data.append((tf.convert_to_tensor(new_draws), target_efficiency, std))
     
-    def train_model(self, epochs, beta, std):
+    def train_model(self, epochs, beta):
 
         # Define optimizer
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
@@ -415,10 +419,11 @@ class NeuralNetworkWrapper:
                                    axis=1)
 
                 target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
-                efficiency_mismatch = (efficiencies-target_efficiencies)**2
+                std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
 
                 # Compute the loss using both the training predictions and the external predictions
-                loss_value = self.loss(y_batch_train, y_pred_train, beta, std, efficiency_mismatch)
+                loss_value = self.loss(y_batch_train, y_pred_train, beta, efficiency_mismatch)
 
             grads = tape.gradient(loss_value, self.model.trainable_weights)
             optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
@@ -435,7 +440,7 @@ class NeuralNetworkWrapper:
                 
             # Compute validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
-            val_loss = np.mean([self.loss(y, self.model(x, training=False), beta, std) for x, y in self.test_data])
+            val_loss = np.mean([self.loss(y, self.model(x, training=False), beta) for x, y in self.test_data])
             print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
 
             self.loss_history.append(loss)
