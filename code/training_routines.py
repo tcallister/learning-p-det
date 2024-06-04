@@ -73,7 +73,10 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=N
     else:
         term2 = 0.
 
-    return term1+term2+tf.math.reduce_mean(beta*y_pred)
+    term3 = tf.math.reduce_mean(beta*y_pred)
+    print(term1,term2,term3)
+
+    return term1+term2+term3
 
 def scheduler(epoch, lr):
 
@@ -397,6 +400,17 @@ class NeuralNetworkWrapper:
     
     def train_model(self, epochs, beta):
 
+        """
+        Class method that implements training on loaded data.
+
+        Parameters
+        ----------
+        epochs : `int`
+            Number of training epochs
+        beta : `float`
+            Parameter penalizing large predicted detection probabilities.
+        """
+
         # Define optimizer
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
@@ -407,44 +421,43 @@ class NeuralNetworkWrapper:
         wait = 0
         patience = 10
 
-        def train_step(x,y):
-
-            with tf.GradientTape() as tape:
-
-                # Run the model on the training data
-                y_pred_train = (self.model(x_batch_train, training=True))
-
-                efficiencies = tf.reduce_mean(
-                                   [self.model(auxiliary_data[0], training=True) for auxiliary_data in self.auxiliary_data],
-                                   axis=1)
-
-                target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
-                std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data],dtype='float64')
-                efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
-
-                # Compute the loss using both the training predictions and the external predictions
-                loss_value = self.loss(y_batch_train, y_pred_train, beta, efficiency_mismatch)
-
-            grads = tape.gradient(loss_value, self.model.trainable_weights)
-            optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
-            return loss_value
-
-        # Custom training loop
+        # Loop across training epochs
         for epoch in range(epochs):
 
+            # Loop across epochs 
             epoch_losses = []
-
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
-                loss_value = train_step(x_batch_train, y_batch_train)
+
+                # Prepare gradient
+                with tf.GradientTape() as tape:
+
+                    # Compute predicted detection probabilities on training data
+                    y_pred_train = (self.model(x_batch_train, training=True))
+
+                    # Compute predicted detection efficiencies on preloaded populations
+                    efficiencies = tf.transpose(tf.reduce_mean(
+                                       [self.model(auxiliary_data[0], training=True) for auxiliary_data in self.auxiliary_data],
+                                       axis=1))[0]
+
+                    # Compute efficiency mismatches
+                    target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                    std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                    efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
+
+                    # Compute the loss using both the training predictions and the efficiency predictions
+                    loss_value = self.loss(y_batch_train, y_pred_train, beta, efficiency_mismatch)
+
+                # Compute gradient, update weights, and save loss
+                grads = tape.gradient(loss_value, self.model.trainable_weights)
+                optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
                 epoch_losses.append(loss_value)
                 
-            # Compute validation loss at the end of the epoch
+            # Compute mean loss and validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
             val_loss = np.mean([self.loss(y, self.model(x, training=False), beta) for x, y in self.test_data])
-            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
-
             self.loss_history.append(loss)
             self.val_loss_history.append(val_loss)
+            print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
 
             # Check for early stopping
             if val_loss < best_val_loss:
