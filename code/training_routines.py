@@ -74,7 +74,6 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=N
         term2 = 0.
 
     term3 = tf.math.reduce_mean(beta*y_pred)
-    print(term1,term2,term3)
 
     return term1+term2+term3
 

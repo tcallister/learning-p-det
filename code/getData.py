@@ -66,7 +66,7 @@ def getInjections():
     """
 
     # Load injections
-    injectionFile = os.path.join(dirname,"../input/injectionDict_FAR_1_in_1_BBH.pickle")
+    injectionFile = os.path.join(dirname,"./../input/injectionDict_FAR_1_in_1_BBH.pickle")
     injectionDict = np.load(injectionFile,allow_pickle=True)
 
     # Convert all lists to numpy arrays
@@ -76,7 +76,7 @@ def getInjections():
 
     return injectionDict
 
-def getSamples(sample_limit=2000,bbh_only=True):
+def getSamples(sample_limit=2000,bbh_only=True,O3_only=True):
 
     """
     Function to load and preprocess BBH posterior samples for use in numpyro likelihood functions.
@@ -99,7 +99,7 @@ def getSamples(sample_limit=2000,bbh_only=True):
     """
 
     # Load dictionary with preprocessed posterior samples
-    sampleFile = os.path.join(dirname,"./../../autoregressive-bbh-inference/input/sampleDict_FAR_1_in_1_yr.pickle")
+    sampleFile = os.path.join(dirname,"./../input/sampleDict_FAR_1_in_1_yr.pickle")
     sampleDict = np.load(sampleFile,allow_pickle=True)
 
     # Remove non-BBH events, if desired
@@ -108,6 +108,13 @@ def getSamples(sample_limit=2000,bbh_only=True):
         for event in non_bbh:
             print("Removing ",event)
             sampleDict.pop(event)
+
+    if O3_only:
+        events = list(sampleDict.keys())
+        for event in events:
+            if event[0]=="G":
+                print("Removing ",event)
+                sampleDict.pop(event)
 
     # Loop across events
     for event in sampleDict:
@@ -123,9 +130,12 @@ def getSamples(sample_limit=2000,bbh_only=True):
             if key!='downselection_Neff':
                 sampleDict[event][key] = sampleDict[event][key][inds_to_keep]
 
+    print(sampleDict.keys())
+    print(len(sampleDict))
+
     return sampleDict
 
 if __name__=="__main__":
 
-    test = getInjections()
-    print(test['m1'].size)
+    getInjections()
+    getSamples()

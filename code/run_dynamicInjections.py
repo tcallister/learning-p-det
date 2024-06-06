@@ -64,8 +64,8 @@ injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,400)
 injectionDict['dz'] = jnp.diff(injectionDict['reference_z_grid'])[0]
 injectionDict['reference_dVdz_grid'] = 4.*np.pi*Planck15.differential_comoving_volume(injectionDict['reference_z_grid']).to(u.Gpc**3/u.sr).value
 
-p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_16_weights.hdf5",
-        scaler="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_16_input_scaler.pickle")
+p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_03_weights.hdf5",
+                scaler="/project/kicp/tcallister/trained_models/bbhOnly_3e4_1122_b_0.35_scaledSigmoid_full/job_03_input_scaler.pickle")
 
 # Set up NUTS sampler over our likelihood
 kernel = NUTS(baseline_dynamicInjections)
@@ -79,5 +79,5 @@ mcmc.print_summary()
 
 # Save out data
 data = az.from_numpyro(mcmc)
-az.to_netcdf(data,"output_dynamicInjections_altNN2.cdf")
+az.to_netcdf(data,"output_dynamicInjections.cdf")
 
