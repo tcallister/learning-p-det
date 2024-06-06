@@ -27,22 +27,13 @@ class NegativeLogLikelihood(tf.keras.losses.Loss):
             Corresponding set of predicted detection probabilities
         """
 
-        # The log likelihood below diverges numerically if predicted probabilities are too close to unity
-        # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
-        # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
-        #ceil = tf.ones_like(y_pred)*(1.-1e-20)
-        #y_pred = tf.where(y_pred>1.-1e-20,ceil,y_pred)
-
-        #floor = tf.ones_like(y_pred)*(1e-40)
-        #y_pred = tf.where(y_pred<1e-40,floor,y_pred)
-
         # Binomial log likelihood (aka cross-entropy loss fucntion)
         log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
 
         # Return with prior penalizing large probabilities
         return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
     
-def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=None):
+def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=tf.convert_to_tensor([0.],dtype='float64')):
 
     """
     Parameters
@@ -51,30 +42,24 @@ def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=N
         True missed/found labels (0/1 respectively)
     y_pred : `list`
         Corresponding set of predicted detection probabilities
+    beta : `float`
+        Inverse temperature penalty on large predicted detection probabilities
+    efficiency_mismatches : `tf.Tensor`
+        Standardized residuals between expected and predicted detection efficiences for an arbitrary
+        number of reference populations. Default 0.
     """
-
-    # The log likelihood below diverges numerically if predicted probabilities are too close to unity
-    # (note that this is a numerical precision issue, not anything fundamental). Accordingly, implement
-    # a ceiling value of P_det = 1-1e-9 to ensure that the loss function remains finite
-    #ceil = tf.ones_like(y_pred)*(1.-1e-20)
-    #y_pred = tf.where(y_pred>1.-1e-20,ceil,y_pred)
-
-    #floor = tf.ones_like(y_pred)*(1e-40)
-    #y_pred = tf.where(y_pred<1e-40,floor,y_pred)
 
     # Binomial log likelihood (aka cross-entropy loss fucntion)
     log_ps = tf.where(y_true==1,tf.math.log(y_pred),tf.math.log(1.-y_pred))
-
-    # Return with prior penalizing large probabilities
     term1 = -tf.math.reduce_mean(log_ps)
 
-    if efficiency_mismatches!=None:
-       term2 = tf.math.reduce_sum(efficiency_mismatches/2.)
-    else:
-        term2 = 0.
+    # Negative log likelihood of predicted detection efficiencies
+    # Provided values should be pre-standardized:
+    # (Predicted-Actual)**2/(Expected variance)
+    term2 = tf.math.reduce_sum(efficiency_mismatches/2.)
 
+    # Return with prior penalizing large probabilities
     term3 = tf.math.reduce_mean(beta*y_pred)
-    print(term1,term2,term3)
 
     return term1+term2+term3
 
@@ -204,8 +189,6 @@ class NeuralNetworkWrapper:
                  lr=1e-3,
                  activation='ReLU',
                  leaky_alpha=0.01,
-                 dropout=False,
-                 dropout_rate=0.5,
                  output_bias=0):
         
         """
@@ -221,14 +204,12 @@ class NeuralNetworkWrapper:
             Number of hidden layers (default 3)
         lr : `float`
             Learning rate (default 1e-3)
+        activation : `str`
+            One of `ReLU`, `LeakyReLU`, or `ELU`. Default `ReLU`.
         leaky_alpha : `float`
             Parameter specifying LeakyReLU activation function (default 0.01)
-        dropout : `bool`
-            Flag to include dropout layer (default True)
-        dropout_rate : `float`
-            Dropout rate (default 0.5)
         output_bias : `float`
-            Bias to include in output layer (default None)
+            Bias to include in output layer (default 0)
         
         Returns
         -------
@@ -253,6 +234,9 @@ class NeuralNetworkWrapper:
         # Initialize training and testing data
         self.train_data = None
         self.test_data = None
+
+        # List to hold auxiliary datasets used to incorporate
+        # predicted integrated detection efficiencies during training
         self.auxiliary_data = []
 
         # Training history
@@ -264,6 +248,10 @@ class NeuralNetworkWrapper:
         """
         Function to construct and return an ANN object, to be subsequently trained or into which
         pre-trained weights can be loaded.
+
+        Parameters
+        ----------
+        None
         
         Returns
         -------
