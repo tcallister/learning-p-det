@@ -33,7 +33,7 @@ class NegativeLogLikelihood(tf.keras.losses.Loss):
         # Return with prior penalizing large probabilities
         return -tf.math.reduce_mean(log_ps) + tf.math.reduce_mean(self.beta*y_pred)
     
-def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=tf.convert_to_tensor([0.],dtype='float64')):
+def NegativeLogLikelihoodAugmented(y_true, y_pred, beta, efficiency_mismatches=tf.convert_to_tensor([0.], dtype='float64')):
 
     """
     Parameters
@@ -224,8 +224,6 @@ class NeuralNetworkWrapper:
         self.lr = lr
         self.activation = activation
         self.leaky_alpha = leaky_alpha
-        self.dropout = dropout
-        self.dropout_rate = dropout_rate
         self.output_bias = output_bias
 
         # Instantiate neural network
