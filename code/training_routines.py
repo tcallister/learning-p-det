@@ -338,9 +338,9 @@ class NeuralNetworkWrapper:
 
         # Split off inputs and outputs
         train_input = train_data[self.feature_names].values
-        train_output = train_data['detected']
+        train_output = train_data['detected'][:,np.newaxis]
         val_input = val_data[self.feature_names].values
-        val_output = val_data['detected']
+        val_output = val_data['detected'][:,np.newaxis]
 
         # Define quantile transformer and scale inputs
         self.input_scaler = StandardScaler()
