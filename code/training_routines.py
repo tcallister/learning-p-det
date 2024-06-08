@@ -1,6 +1,7 @@
 import tensorflow as tf
 tf.keras.backend.set_floatx('float64')
 from tensorflow.keras import initializers
+from sklearn.preprocessing import StandardScaler
 from utilities import load_training_data
 from draw_new_injections import draw_new_injections
 import numpy as np
@@ -189,7 +190,9 @@ class NeuralNetworkWrapper:
                  lr=1e-3,
                  activation='ReLU',
                  leaky_alpha=0.01,
-                 output_bias=0):
+                 output_bias=0,
+                 addDerived = lambda x: None,
+                 feature_names=[]):
         
         """
         Class to store parameters for a neural network and instantiate a model object
@@ -210,6 +213,8 @@ class NeuralNetworkWrapper:
             Parameter specifying LeakyReLU activation function (default 0.01)
         output_bias : `float`
             Bias to include in output layer (default 0)
+        feature_names : `list`
+            Parameters to extract from data for use in neural network
         
         Returns
         -------
@@ -230,6 +235,9 @@ class NeuralNetworkWrapper:
         self.model = self.build_model()
 
         # Initialize training and testing data
+        self.addDerived = addDerived
+        self.feature_names = feature_names
+        self.input_scaler = None
         self.train_data = None
         self.test_data = None
 
@@ -287,13 +295,12 @@ class NeuralNetworkWrapper:
 
             ann.add(activation)
         
-        # Prepare output bias, if specified
-        if self.output_bias is not None:
-            output_bias = tf.keras.initializers.Constant(self.output_bias)
-        else:
-            output_bias = 0.
+        # Prepare output bias
+        output_bias = tf.keras.initializers.Constant(self.output_bias)
         
         # Final output layer with sigmoid activation
+        # This provides a hard cap on predicted probabilities, accounting
+        # for time in which no interferometers were on
         def scaled_sigmoid(x):
             return (1.-0.0589) * tf.nn.sigmoid(x)
         ann.add(tf.keras.layers.Dense(units=1, bias_initializer=output_bias, activation=scaled_sigmoid))
@@ -302,38 +309,51 @@ class NeuralNetworkWrapper:
     
     def prepare_data(self,
                     batch_size,
-                    train_data_input,
-                    train_data_output,
-                    test_data_input,
-                    test_data_output):
+                    train_data_external,
+                    val_data_external):
         """
-        Prepare the training and validation data for the model.
+        Prepare the training and validation data to be used during training.
 
         Parameters
         ----------
         batch_size : `int`
             Number of samples per batch
-        train_data_input : `numpy.ndarray`
-            Array of data to serve as inputs for neural network during training
-        train_data_output : `numpy.ndarray`
-            Array of data to serve as outputs for neural network during training
-        test_data_input : `numpy.ndarray`
-            Array of data to serve as inputs for neural network during testing
-        test_data_output : `numpy.ndarray`
-            Array of data to serve as outputs for neural network during testing
+        train_data_external : `numpy.ndarray`
+            Array of data for neural network during training
+        val_data_external : `numpy.ndarray`
+            Array of validation data for neural network during testing
 
         Returns
         -------
         None
         """
-        print(train_data_input.shape, train_data_output.shape)
+
+        # Make copy of data for safety
+        train_data = train_data_external.copy()
+        val_data = val_data_external.copy()
+
+        # Add derived parameters
+        self.addDerived(train_data)
+        self.addDerived(val_data)
+
+        # Split off inputs and outputs
+        train_input = train_data[self.feature_names].values
+        train_output = train_data['detected']
+        val_input = val_data[self.feature_names].values
+        val_output = val_data['detected']
+
+        # Define quantile transformer and scale inputs
+        self.input_scaler = StandardScaler()
+        self.input_scaler.fit(train_input)
+        train_input_scaled = self.input_scaler.transform(train_input)
+        val_input_scaled = self.input_scaler.transform(val_input)
         
         # Create a tf.data.Dataset for the training data
-        train_dataset = tf.data.Dataset.from_tensor_slices((train_data_input, train_data_output))
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_input_scaled, train_output))
         train_dataset = train_dataset.shuffle(buffer_size=len(train_dataset)).batch(batch_size)
 
         # Create a tf.data.Dataset for the validation data
-        val_dataset = tf.data.Dataset.from_tensor_slices((test_data_input, test_data_output))
+        val_dataset = tf.data.Dataset.from_tensor_slices((val_input_scaled, val_output))
         val_dataset = val_dataset.batch(batch_size)
 
         # Save as attributes
@@ -343,10 +363,7 @@ class NeuralNetworkWrapper:
     def draw_from_reference_population(self,
                                        parameter_dict,
                                        n_draws,
-                                       target_efficiency,
-                                       addDerived,
-                                       feature_names,
-                                       scaler):
+                                       target_efficiency):
 
         """
         Function to draw from a reference population of synthetic data, to be used for
@@ -374,8 +391,8 @@ class NeuralNetworkWrapper:
 
         # Draw new samples, extract training features, and transform
         new_draws = draw_new_injections(batch_size=n_draws, **parameter_dict)
-        addDerived(new_draws)
-        new_draws = scaler.transform(new_draws[feature_names])
+        self.addDerived(new_draws)
+        new_draws = self.input_scaler.transform(new_draws[self.feature_names])
 
         # Expected standard deviation in recovered draws
         std = np.sqrt(target_efficiency/n_draws)
