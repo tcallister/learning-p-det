@@ -143,14 +143,15 @@ def baseline(sampleDict,injectionDict):
     # mu: Mean of the chi-effective distribution
     # logsig_chi: Log10 of the chi-effective distribution's standard deviation
 
+    """
     #logR20 = numpyro.deterministic("logR20",-0.5)
-    alpha = numpyro.deterministic("alpha",-3.5)
-    mu_m1 = numpyro.deterministic("mu_m1",35.)
+    #alpha = numpyro.deterministic("alpha",-3.5)
+    #mu_m1 = numpyro.deterministic("mu_m1",35.)
     mMin = numpyro.deterministic("mMin",9.)
-    bq = numpyro.deterministic("bq",1.)
+    #bq = numpyro.deterministic("bq",1.)
 
-    sig_m1 = numpyro.deterministic("sig_m1",3.)
-    log_f_peak = numpyro.deterministic("log_f_peak",-3.)
+    #sig_m1 = numpyro.deterministic("sig_m1",3.)
+    #log_f_peak = numpyro.deterministic("log_f_peak",-3.)
     mMax = numpyro.deterministic("mMax",80.)
     log_dmMin = numpyro.deterministic("log_dmMin",0.)
     log_dmMax = numpyro.deterministic("log_dmMax",1.)
@@ -159,11 +160,38 @@ def baseline(sampleDict,injectionDict):
     sig_cost = numpyro.deterministic("sig_cost",0.4)
 
     kappa = numpyro.sample("kappa",dist.Normal(0,5))
-    #alpha = numpyro.sample("alpha",dist.Normal(-2,3))
+    alpha = numpyro.sample("alpha",dist.Normal(-2,3))
+    mu_m1 = numpyro.sample("mu_m1",dist.Uniform(20,50))
+    bq = numpyro.sample("bq",dist.Normal(0,3))
     logR20 = numpyro.sample("logR20",dist.Uniform(-12,12))
     R20 = numpyro.deterministic("R20",10.**logR20)
 
+    logit_sig_m1 = numpyro.sample("logit_sig_m1",dist.Normal(0,logit_std))
+    sig_m1,jac_sig_m1 = get_value_from_logit(logit_sig_m1,2.,15.)
+    numpyro.deterministic("sig_m1",sig_m1)
+    numpyro.factor("p_sig_m1",logit_sig_m1**2/(2.*logit_std**2)-jnp.log(jac_sig_m1))
+
+    logit_log_f_peak = numpyro.sample("logit_log_f_peak",dist.Normal(0,logit_std))
+    log_f_peak,jac_log_f_peak = get_value_from_logit(logit_log_f_peak,-3,0.)
+    numpyro.deterministic("log_f_peak",log_f_peak)
+    numpyro.factor("p_log_f_peak",logit_log_f_peak**2/(2.*logit_std**2)-jnp.log(jac_log_f_peak))
     """
+
+    """
+    logit_mu_chi = numpyro.sample("logit_mu_chi",dist.Normal(0,logit_std))
+    logit_logsig_chi = numpyro.sample("logit_logsig_chi",dist.Normal(0,logit_std))
+    logit_sig_cost = numpyro.sample("logit_sig_cost",dist.Normal(0,logit_std))
+    mu_chi,jac_mu_chi = get_value_from_logit(logit_mu_chi,0.,1.)
+    logsig_chi,jac_logsig_chi = get_value_from_logit(logit_logsig_chi,-1.,0.)
+    sig_cost,jac_sig_cost = get_value_from_logit(logit_sig_cost,0.5,1.5)
+    numpyro.deterministic("mu_chi",mu_chi)
+    numpyro.deterministic("logsig_chi",logsig_chi)
+    numpyro.deterministic("sig_cost",sig_cost)
+    numpyro.factor("p_mu_chi",logit_mu_chi**2/(2.*logit_std**2)-jnp.log(jac_mu_chi))
+    numpyro.factor("p_logsig_chi",logit_logsig_chi**2/(2.*logit_std**2)-jnp.log(jac_logsig_chi))
+    numpyro.factor("p_sig_cost",logit_sig_cost**2/(2.*logit_std**2)-jnp.log(jac_sig_cost))
+    """
+
     logR20 = numpyro.sample("logR20",dist.Uniform(-12,12))
     alpha = numpyro.sample("alpha",dist.Normal(-2,3))
     mu_m1 = numpyro.sample("mu_m1",dist.Uniform(20,50))
@@ -207,7 +235,6 @@ def baseline(sampleDict,injectionDict):
     numpyro.factor("p_mu_chi",logit_mu_chi**2/(2.*logit_std**2)-jnp.log(jac_mu_chi))
     numpyro.factor("p_logsig_chi",logit_logsig_chi**2/(2.*logit_std**2)-jnp.log(jac_logsig_chi))
     numpyro.factor("p_sig_cost",logit_sig_cost**2/(2.*logit_std**2)-jnp.log(jac_sig_cost))
-    """
 
     # Fixed params
     mu_cost = 1.
@@ -326,15 +353,16 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     # mu: Mean of the chi-effective distribution
     # logsig_chi: Log10 of the chi-effective distribution's standard deviation
 
+    """
     #logR20 = numpyro.deterministic("logR20",-0.5)
     #R20 = numpyro.deterministic("R20",10.**logR20)
-    alpha = numpyro.deterministic("alpha",-3.5)
-    mu_m1 = numpyro.deterministic("mu_m1",35.)
+    #alpha = numpyro.deterministic("alpha",-3.5)
+    #mu_m1 = numpyro.deterministic("mu_m1",35.)
     mMin = numpyro.deterministic("mMin",9.)
-    bq = numpyro.deterministic("bq",1.)
+    #bq = numpyro.deterministic("bq",1.)
 
-    sig_m1 = numpyro.deterministic("sig_m1",3.)
-    log_f_peak = numpyro.deterministic("log_f_peak",-3.)
+    #sig_m1 = numpyro.deterministic("sig_m1",3.)
+    #log_f_peak = numpyro.deterministic("log_f_peak",-3.)
     mMax = numpyro.deterministic("mMax",80.)
     log_dmMin = numpyro.deterministic("log_dmMin",0.)
     log_dmMax = numpyro.deterministic("log_dmMax",1.)
@@ -343,11 +371,38 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     sig_cost = numpyro.deterministic("sig_cost",0.4)
 
     kappa = numpyro.sample("kappa",dist.Normal(0,5))
-    #alpha = numpyro.sample("alpha",dist.Normal(-2,3))
+    alpha = numpyro.sample("alpha",dist.Normal(-2,3))
+    mu_m1 = numpyro.sample("mu_m1",dist.Uniform(20,50))
+    bq = numpyro.sample("bq",dist.Normal(0,3))
     logR20 = numpyro.sample("logR20",dist.Uniform(-12,12))
     R20 = numpyro.deterministic("R20",10.**logR20)
 
+    logit_sig_m1 = numpyro.sample("logit_sig_m1",dist.Normal(0,logit_std))
+    sig_m1,jac_sig_m1 = get_value_from_logit(logit_sig_m1,2.,15.)
+    numpyro.deterministic("sig_m1",sig_m1)
+    numpyro.factor("p_sig_m1",logit_sig_m1**2/(2.*logit_std**2)-jnp.log(jac_sig_m1))
+
+    logit_log_f_peak = numpyro.sample("logit_log_f_peak",dist.Normal(0,logit_std))
+    log_f_peak,jac_log_f_peak = get_value_from_logit(logit_log_f_peak,-3,0.)
+    numpyro.deterministic("log_f_peak",log_f_peak)
+    numpyro.factor("p_log_f_peak",logit_log_f_peak**2/(2.*logit_std**2)-jnp.log(jac_log_f_peak))
     """
+
+    """
+    logit_mu_chi = numpyro.sample("logit_mu_chi",dist.Normal(0,logit_std))
+    logit_logsig_chi = numpyro.sample("logit_logsig_chi",dist.Normal(0,logit_std))
+    logit_sig_cost = numpyro.sample("logit_sig_cost",dist.Normal(0,logit_std))
+    mu_chi,jac_mu_chi = get_value_from_logit(logit_mu_chi,0.,1.)
+    logsig_chi,jac_logsig_chi = get_value_from_logit(logit_logsig_chi,-1.,0.)
+    sig_cost,jac_sig_cost = get_value_from_logit(logit_sig_cost,0.5,1.5)
+    numpyro.deterministic("mu_chi",mu_chi)
+    numpyro.deterministic("logsig_chi",logsig_chi)
+    numpyro.deterministic("sig_cost",sig_cost)
+    numpyro.factor("p_mu_chi",logit_mu_chi**2/(2.*logit_std**2)-jnp.log(jac_mu_chi))
+    numpyro.factor("p_logsig_chi",logit_logsig_chi**2/(2.*logit_std**2)-jnp.log(jac_logsig_chi))
+    numpyro.factor("p_sig_cost",logit_sig_cost**2/(2.*logit_std**2)-jnp.log(jac_sig_cost))
+    """
+
     logR20 = numpyro.sample("logR20",dist.Uniform(-12,12))
     alpha = numpyro.sample("alpha",dist.Normal(-2,3))
     mu_m1 = numpyro.sample("mu_m1",dist.Uniform(20,50))
@@ -391,7 +446,6 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     numpyro.factor("p_mu_chi",logit_mu_chi**2/(2.*logit_std**2)-jnp.log(jac_mu_chi))
     numpyro.factor("p_logsig_chi",logit_logsig_chi**2/(2.*logit_std**2)-jnp.log(jac_logsig_chi))
     numpyro.factor("p_sig_cost",logit_sig_cost**2/(2.*logit_std**2)-jnp.log(jac_sig_cost))
-    """
 
     # Fixed params
     mu_cost = 1.
@@ -438,9 +492,9 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
     inj_cost2 = mu_cost + sig_cost*sqrt_2*erfinv(inj_cost2_cdfs*(cost_erf_b-cost_erf_a) + cost_erf_a)
 
     # Redshifts
-    #inj_kappa = -1.
-    #reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(inj_kappa-1.)
-    reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(kappa-1.)
+    inj_kappa = -1.
+    reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(inj_kappa-1.)
+    #reference_f_z = injectionCDFs['reference_dVdz_grid']*(1.+injectionCDFs['reference_z_grid'])**(kappa-1.)
     reference_cdf_z = jnp.cumsum(reference_f_z)*injectionCDFs['dz']
     reference_f_z_integral = reference_cdf_z[-1]
     reference_cdf_z /= reference_f_z_integral
@@ -463,8 +517,8 @@ def baseline_dynamicInjections(sampleDict,injectionCDFs,Pdet):
 
     p_dets = Pdet(injection_params)
 
-    Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(p_dets)
-    #Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(Pdet(injection_params).T*(1.+inj_z)**(kappa-inj_kappa))
+    #Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(p_dets)
+    Nexp = R20*(reference_f_m1_integral/p_m1_norm)*(reference_f_z_integral/p_z_norm)*jnp.mean(p_dets.T*(1.+inj_z)**(kappa-inj_kappa))
     numpyro.factor("rate",-Nexp)
 
     # As a fit diagnostic, compute effective number of injections
