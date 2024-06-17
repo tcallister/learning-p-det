@@ -55,13 +55,15 @@ def format_data(file,output):
 
     #print(injectionData[injectionData['detected']==1].size)
     #print(len(injectionData[injectionData['detected']==1]))
-    #print(len(injectionData[injectionData['detected']==1])/injection_data.attrs['total_generated'])
+
+    print(file)
+    print(len(injectionData[injectionData['detected']==1])/injection_data.attrs['total_generated'])
 
     injectionData = shuffle(injectionData)
     train_data,val_data = train_test_split(injectionData,train_size=0.8)
 
-    train_data.to_hdf(output+'training_data.hdf','train')
-    val_data.to_hdf(output+'validation_data.hdf','validate')
+    #train_data.to_hdf(output+'training_data.hdf','train')
+    #val_data.to_hdf(output+'validation_data.hdf','validate')
 
 format_data('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5','./../data/bbh_')
 format_data('./../input/endo3_bnspop-LIGO-T2100113-v12.hdf5','./../data/bns_')

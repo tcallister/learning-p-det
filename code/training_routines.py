@@ -97,6 +97,8 @@ def build_ann(input_shape=9,
         Number of neurons in each hidden layer (default 64)
     hidden_layers : `int`
         Number of hidden layers (default 3)
+    loss : `func`
+        Loss function for use in training. If `None`, defaults to `NegativeLogLikelihood`
     lr : `float`
         Learning rate (default 1e-3)
     leaky_alpha : `float` 
@@ -205,6 +207,8 @@ class NeuralNetworkWrapper:
             Number of neurons in each hidden layer (default 64)
         hidden_layers : `int`
             Number of hidden layers (default 3)
+        loss : `func`
+            Loss function for use in training. If `None`, defaults to `NegativeLogLikelihood`
         lr : `float`
             Learning rate (default 1e-3)
         activation : `str`
@@ -213,6 +217,8 @@ class NeuralNetworkWrapper:
             Parameter specifying LeakyReLU activation function (default 0.01)
         output_bias : `float`
             Bias to include in output layer (default 0)
+        addDerived : `func`
+            Function, if needed, to add derived data columns to input data. Defaults to the identity
         feature_names : `list`
             Parameters to extract from data for use in neural network
         
@@ -312,7 +318,8 @@ class NeuralNetworkWrapper:
                     train_data_external,
                     val_data_external):
         """
-        Prepare the training and validation data to be used during training.
+        Prepare the training and validation data to be used during training. Given quantities passed
+        at time of class creation, adds derived columns, splits into input and output, and scales.
 
         Parameters
         ----------
@@ -343,6 +350,7 @@ class NeuralNetworkWrapper:
         val_output = val_data['detected'][:,np.newaxis]
 
         # Define quantile transformer and scale inputs
+        # Store input scaler
         self.input_scaler = StandardScaler()
         self.input_scaler.fit(train_input)
         train_input_scaled = self.input_scaler.transform(train_input)
@@ -377,12 +385,6 @@ class NeuralNetworkWrapper:
             Number of synthetic samples to draw
         target_efficiency : `float`
             Target recovery efficiency for the synthetic samples
-        addDerived : `function`
-            Function to add derived features to the synthetic samples
-        feature_names : `list`
-            List of feature names to be used for training
-        scaler : `sklearn.preprocessing.StandardScaler`
-            Scaler object to transform synthetic samples
 
         Returns
         -------
@@ -438,9 +440,7 @@ class NeuralNetworkWrapper:
                     y_pred_train = (self.model(x_batch_train, training=True))
 
                     # Compute predicted detection efficiencies on preloaded populations
-                    efficiencies = tf.transpose(tf.reduce_mean(
-                                       [self.model(auxiliary_data[0], training=True) for auxiliary_data in self.auxiliary_data],
-                                       axis=1))[0]
+                    efficiencies = tf.transpose([tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data])
 
                     # Compute efficiency mismatches
                     target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')

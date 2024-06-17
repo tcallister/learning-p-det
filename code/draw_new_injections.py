@@ -108,8 +108,8 @@ def draw_new_injections(batch_size=1000,
                             q)
     
     # Record and return
-    draws = pd.DataFrame({'m1_src':m1,
-                        'm2_src':m2,
+    draws = pd.DataFrame({'m1_source':m1,
+                        'm2_source':m2,
                         'm1_detector':m1_det,
                         'm2_detector':m2_det,
                         'chirp_mass_detector':Mc_det,
