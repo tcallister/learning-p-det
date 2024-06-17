@@ -134,7 +134,7 @@ def draw_new_injections(batch_size=1000,
 
     # If we have not already conditioned on primary mass, reject all draws with m2>m1
     if conditional_mass==False:
-        draws = draws[draws.m1_src>draws.m2_src]
+        draws = draws[draws.m1_source>draws.m2_source]
 
     return draws
 
