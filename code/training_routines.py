@@ -426,6 +426,31 @@ class NeuralNetworkWrapper:
         wait = 0
         patience = 10
 
+        @tf.function
+        def train_step(x_batch_train,y_batch_train):
+
+            # Prepare gradient
+            with tf.GradientTape() as tape:
+            
+                # Compute predicted detection probabilities on training data
+                y_pred_train = (self.model(x_batch_train, training=True))
+
+                # Compute predicted detection efficiencies on preloaded populations
+                efficiencies = tf.transpose([tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data])
+
+                # Compute efficiency mismatches
+                target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
+
+                # Compute the loss using both the training predictions and the efficiency predictions
+                loss_value = self.loss(y_batch_train, y_pred_train, beta, efficiency_mismatch)
+
+            # Compute gradient, update weights, and save loss
+            grads = tape.gradient(loss_value, self.model.trainable_weights)
+            optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
+            return loss_value
+
         # Loop across training epochs
         for epoch in range(epochs):
 
@@ -433,6 +458,11 @@ class NeuralNetworkWrapper:
             epoch_losses = []
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
 
+                loss_value = train_step(x_batch_train,y_batch_train)
+                epoch_losses.append(loss_value)
+                
+
+                """
                 # Prepare gradient
                 with tf.GradientTape() as tape:
 
@@ -454,6 +484,7 @@ class NeuralNetworkWrapper:
                 grads = tape.gradient(loss_value, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
                 epoch_losses.append(loss_value)
+                """
                 
             # Compute mean loss and validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
