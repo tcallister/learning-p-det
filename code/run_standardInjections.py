@@ -14,7 +14,7 @@ import h5py
 import sys
 
 import numpy as np
-np.random.seed(20)
+np.random.seed(10)
 
 # Get dictionaries holding injections and posterior samples
 injectionDict = getInjections()
@@ -34,5 +34,5 @@ mcmc.print_summary()
 
 # Save out data
 data = az.from_numpyro(mcmc)
-az.to_netcdf(data,"output_standardInjections_altSeed.cdf")
+az.to_netcdf(data,"output_standardInjections.cdf")
 

@@ -167,7 +167,7 @@ def load_training_data(
         train_data = pd.concat([train_data,bbh_certain_data])
         val_data = pd.concat([val_data,val_bbh_certain_data])
 
-    #print(pd.read_hdf('{0}/rpo3-bbh-certain-formatted.hdf'.format(data_directory)).shape)
+    print(pd.read_hdf('{0}/rpo3-bbh-certain-formatted.hdf'.format(data_directory)).shape)
 
     # Certain BNS
     if n_bns_certain>0:
