@@ -1,12 +1,12 @@
 import tensorflow as tf
-tf.keras.backend.set_floatx('float64')
 from tensorflow.keras import initializers
 from sklearn.preprocessing import StandardScaler
-from utilities import load_training_data
 from draw_new_injections import draw_new_injections
 import numpy as np
 from tqdm import tqdm
 import sys
+tf.keras.backend.set_floatx('float64')
+
 
 class NegativeLogLikelihood(tf.keras.losses.Loss):
 
@@ -560,48 +560,51 @@ class NeuralNetworkWrapper:
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr)
 
         # Define early stopping parameters
-        best_val_loss = float('inf')
-        best_epoch = 0
-        best_weights = None
-        wait = 0
-        patience = 10
+        best_val_loss = float('inf')    # Current best validation loss
+        best_epoch = 0                  # Epoch of best val loss
+        best_weights = None             # Weights at best val loss
+        wait = 0                        # Number of epochs since best loss
+        patience = 10                   # Number of epochs to wait
 
         # Loop across training epochs
         for epoch in range(epochs):
 
-            # Loop across epochs 
+            # Loop across epochs
             epoch_losses = []
             for step, (x_batch_train, y_batch_train) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
-
-                #loss_value = train_step(x_batch_train,y_batch_train)
-                #epoch_losses.append(loss_value)
 
                 # Prepare gradient
                 with tf.GradientTape() as tape:
 
-                    # Compute predicted detection probabilities on training data
+                    # Compute predicted detection probabilities on training
+                    # data
                     y_pred_train = (self.model(x_batch_train, training=True))
 
-                    # Compute predicted detection efficiencies on preloaded populations
-                    efficiencies = tf.transpose([tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data])
+                    # Compute predicted integrated detection probabilities
+                    # across any reference populations, as produced by
+                    # `draw_from_reference_population`
+                    efficiencies = tf.transpose([
+                        tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data
+                        ])
 
-                    # Compute efficiency mismatches
-                    target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data],dtype='float64')
-                    std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data],dtype='float64')
+                    # Compute standardized efficiency mismatches
+                    target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data], dtype='float64')
+                    std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data], dtype='float64')
                     efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
 
-                    # Compute the loss using both the training predictions and the efficiency predictions
+                    # Compute the loss using both the training predictions and
+                    # the efficiency predictions
                     loss_value = self.loss(y_batch_train, y_pred_train, beta, efficiency_mismatch)
 
                 # Compute gradient, update weights, and save loss
                 grads = tape.gradient(loss_value, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(grads, self.model.trainable_weights))
                 epoch_losses.append(loss_value)
-                
+
             # Compute mean loss and validation loss at the end of the epoch
             loss = np.mean(epoch_losses)
             val_loss = np.mean([self.loss(y, self.model(x, training=False), beta) for x, y in self.test_data])
-            #val_loss = test.step(x,y)
+
             self.loss_history.append(loss)
             self.val_loss_history.append(val_loss)
             print("Epoch: {}, Loss: {}, Val Loss: {}".format(epoch, loss, val_loss))
@@ -612,6 +615,7 @@ class NeuralNetworkWrapper:
                 best_val_loss = val_loss
                 best_weights = self.model.get_weights()
                 wait = 0
+
             else:
                 wait += 1
                 if wait >= patience:
