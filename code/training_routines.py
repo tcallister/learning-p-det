@@ -580,17 +580,22 @@ class NeuralNetworkWrapper:
                     # data
                     y_pred_train = (self.model(x_batch_train, training=True))
 
-                    # Compute predicted integrated detection probabilities
-                    # across any reference populations, as produced by
-                    # `draw_from_reference_population`
-                    efficiencies = tf.transpose([
-                        tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data
-                        ])
+                    if self.auxiliary_data:
 
-                    # Compute standardized efficiency mismatches
-                    target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data], dtype='float64')
-                    std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data], dtype='float64')
-                    efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
+                        # Compute predicted integrated detection probabilities
+                        # across any reference populations, as produced by
+                        # `draw_from_reference_population`
+                        efficiencies = tf.transpose([
+                            tf.reduce_mean(self.model(auxiliary_data[0], training=True)) for auxiliary_data in self.auxiliary_data
+                            ])
+
+                        # Compute standardized efficiency mismatches
+                        target_efficiencies = tf.convert_to_tensor([auxiliary_data[1] for auxiliary_data in self.auxiliary_data], dtype='float64')
+                        std_efficiencies = tf.convert_to_tensor([auxiliary_data[2] for auxiliary_data in self.auxiliary_data], dtype='float64')
+                        efficiency_mismatch = (efficiencies-target_efficiencies)**2/std_efficiencies**2
+
+                    else:
+                        efficiency_mismatch = tf.convert_to_tensor([0.], dtype='float64')
 
                     # Compute the loss using both the training predictions and
                     # the efficiency predictions
