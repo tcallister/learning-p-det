@@ -19,7 +19,7 @@ from p_det_O3.emulator import p_det_O3
 from scipy.stats.qmc import Sobol
 
 import numpy as np
-np.random.seed(10)
+np.random.seed(11)
 
 # Get dictionaries holding injections and posterior samples
 sampleDict = getSamples(sample_limit=3000)
@@ -27,8 +27,8 @@ sampleDict = getSamples(sample_limit=3000)
 print(sampleDict['S190521g']['m1'][0])
 
 # Set up dictionary with precomputed quantities for sensitivity estimation
-sobol_sampler = Sobol(d=7, scramble=True, seed=3)
-sobol_samples = jnp.array(sobol_sampler.random_base2(m=18))
+sobol_sampler = Sobol(d=7, scramble=True, seed=1)
+sobol_samples = jnp.array(sobol_sampler.random_base2(m=17))
 injectionDict = {
     'inj_m1_cdfs':sobol_samples[:,0],
     'inj_m2_cdfs':sobol_samples[:,1],
@@ -38,7 +38,7 @@ injectionDict = {
     'inj_cost2_cdfs':sobol_samples[:,5],
     'inj_z_cdfs':sobol_samples[:,6],
     }
-nTrials = int(2**18)
+nTrials = int(2**17)
 
 """
 nTrials = int(1e5)
@@ -63,21 +63,24 @@ phi2 = jnp.array(2.*np.pi*np.random.random(size=nTrials))
 injectionDict['phi12'] = phi1-phi2 
 
 # Finally, population with reference grids
-injectionDict['reference_m1_grid'] = jnp.linspace(2.,100.,400)
-injectionDict['dm1'] = jnp.diff(injectionDict['reference_m1_grid'])[0]
-injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,400)
+#injectionDict['reference_m1_grid'] = jnp.linspace(2.,100.,1000)
+#injectionDict['dm1'] = jnp.diff(injectionDict['reference_m1_grid'])[0]
+injectionDict['reference_lnm1_grid'] = jnp.linspace(jnp.log(2.),jnp.log(100.),1000)
+injectionDict['dlnm1'] = jnp.diff(injectionDict['reference_lnm1_grid'])[0]
+injectionDict['reference_z_grid'] = jnp.linspace(0.,1.9,1000)
 injectionDict['dz'] = jnp.diff(injectionDict['reference_z_grid'])[0]
 injectionDict['reference_dVdz_grid'] = 4.*np.pi*Planck15.differential_comoving_volume(injectionDict['reference_z_grid']).to(u.Gpc**3/u.sr).value
+injectionDict['reference_cost_grid'] = jnp.linspace(-1,1,1000)
 
 p_det = p_det_O3(model_weights="/project/kicp/tcallister/trained_models/wrapper_draft_releas_additionalPops_batch_1024_lr_1e-4_altRatios_linearMasses_fullEvents/job_27_weights.hdf5",
                 scaler="/project/kicp/tcallister/trained_models/wrapper_draft_releas_additionalPops_batch_1024_lr_1e-4_altRatios_linearMasses_fullEvents/job_27_input_scaler.pickle")
 
 # Set up NUTS sampler over our likelihood
 kernel = NUTS(baseline_dynamicInjections,dense_mass=[("logR20","kappa")])
-mcmc = MCMC(kernel,num_warmup=500,num_samples=1000,num_chains=nChains)
+mcmc = MCMC(kernel,num_warmup=1000,num_samples=1500,num_chains=nChains)
 
 # Choose a random key and run over our model
-rng_key = random.PRNGKey(111)
+rng_key = random.PRNGKey(113)
 rng_key,rng_key_ = random.split(rng_key)
 mcmc.run(rng_key_,sampleDict,injectionDict,p_det)
 mcmc.print_summary()

@@ -108,5 +108,6 @@ def getSamples(sample_limit=2000, bbh_only=True, O3_only=True):
 
 if __name__ == "__main__":
 
-    getInjections()
+    injs = getInjections()
+    print(len(injs['m1']))
     getSamples()

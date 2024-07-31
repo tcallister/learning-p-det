@@ -1,5 +1,5 @@
 import numpyro
-nChains = 1
+nChains = 2
 numpyro.set_host_device_count(nChains)
 numpyro.set_platform(platform='gpu')
 from numpyro.infer import NUTS,MCMC
@@ -14,7 +14,7 @@ import h5py
 import sys
 
 import numpy as np
-np.random.seed(10)
+np.random.seed(11)
 
 # Get dictionaries holding injections and posterior samples
 injectionDict = getInjections()
@@ -24,7 +24,7 @@ print(sampleDict['S190521g']['m1'][0])
 
 # Set up NUTS sampler over our likelihood
 kernel = NUTS(baseline)
-mcmc = MCMC(kernel,num_warmup=500,num_samples=1000,num_chains=nChains)
+mcmc = MCMC(kernel,num_warmup=500,num_samples=1500,num_chains=nChains)
 
 # Choose a random key and run over our model
 rng_key = random.PRNGKey(119)
