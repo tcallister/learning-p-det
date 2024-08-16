@@ -4,7 +4,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 from jax.scipy.special import erf, erfinv
 import jax.numpy as jnp
-from astropy.cosmology import Planck18 as Planck15
+from astropy.cosmology import Planck15 as Planck15
 import astropy.units as u
 import pandas as pd
 import sys
@@ -134,7 +134,8 @@ def make_hist(ax,
               raw_bins=None,
               label=None,
               color=None,
-              legend=False):
+              legend=False,
+              n_decimal_pvalue=1):
 
     """
     Helper function to generate histograms for a given parameter among (i) raw
@@ -193,12 +194,36 @@ def make_hist(ax,
     ax.hist(new[param], density=True, bins=new_bins, histtype='step', color='black', zorder=-1, label='Detected (Emulator)')
     ax.hist(raw[param], density=True, bins=raw_bins, histtype='step', color='black', zorder=-1, ls=':', label='Intrinsic')
 
+    """
+    _, edges, _ = ax.hist(reference[param], density=True, bins=ref_bins, color=color, alpha=0.4, label='Detected (Actual)')
+    counts, _ = np.histogram(reference[param], bins=edges)
+    d_edge = edges[1] - edges[0]
+    ax.errorbar(0.5*(edges[1:] + edges[:-1]), counts/np.sum(counts*d_edge), np.sqrt(counts)/np.sum(counts*d_edge),
+                color=color,
+                ls='none',
+                capsize=1,
+                elinewidth=1,
+                capthick=1)
+
+    _, edges, _ = ax.hist(new[param], density=True, bins=new_bins, histtype='step', color='black', zorder=-1, label='Detected (Emulator)')
+    counts, _ = np.histogram(new[param], bins=edges)
+    d_edge = edges[1] - edges[0]
+    ax.errorbar(0.5*(edges[1:] + edges[:-1]), counts/np.sum(counts*d_edge), np.sqrt(counts)/np.sum(counts*d_edge),
+                color='black',
+                ls='none',
+                capsize=1,
+                elinewidth=1,
+                capthick=1)
+    """
+
     if legend:
         ax.legend(loc='upper left', fontsize=9.5, frameon=False)
 
     ks_result = ks_2samp(reference[param], new[param]).pvalue
+    test = ("{0:."+str(n_decimal_pvalue)+"f}").format(100*ks_result)+"\%"
+
     ax.text(0.93, 0.93,
-            "{0:.2e}".format(ks_result),
+            test,
             transform=ax.transAxes,
             verticalalignment='center',
             horizontalalignment='right',
@@ -211,6 +236,8 @@ def make_hist(ax,
         ax.set_ylim(ylim)
 
     ax.set_yticklabels([])
+
+    return
 
 
 # Generate grids over which to integrate various quantities in functions
@@ -323,6 +350,116 @@ def get_inj_efficiency(alpha,
 
     # Compute net detection efficiency
     detection_efficiency = jnp.sum(inj_weights)/injectionDict['nTrials']
+    Neff = jnp.sum(inj_weights)**2/jnp.sum(inj_weights**2)
+
+    return detection_efficiency, Neff
+
+
+# Preemptively load semianalytic injection results
+semianalytic = np.load('BBH_semianalytic.npy',allow_pickle=True)[()]
+semianalytic['obs_snr']['dVdz'] = 4.*np.pi*Planck15.differential_comoving_volume(semianalytic['obs_snr']['z']).to(u.Gpc**3/u.sr).value
+semianalytic['expected_snr']['dVdz'] = 4.*np.pi*Planck15.differential_comoving_volume(semianalytic['expected_snr']['z']).to(u.Gpc**3/u.sr).value
+
+@jax.jit
+def get_semianalytic_efficiency(alpha,
+                                mu_m1,
+                                sig_m1,
+                                log_f_peak,
+                                mMax,
+                                mMin,
+                                log_dmMax,
+                                log_dmMin,
+                                bq,
+                                mu_chi,
+                                logsig_chi,
+                                f_iso, 
+                                mu_cost,
+                                sig_cost,
+                                kappa,
+                                selection='obs'):
+
+    """
+    Function that evaluates detection efficiency for a CBC population with
+    given hyperparameters, via reweighting of semianalytic injections
+
+    Parameters
+    ----------
+    alpha : float
+        Power-law index on "Power-law" part of primary mass distribution
+    mu_m1 : float
+        Mean of Gaussian peak in primary mass distribution
+    sig_m1 : float
+        Standard deviation of Gaussian peak in primary mass distribution
+    log_f_peak : float
+        Log fraction of events in Gaussian peak
+    mMax : float
+        Primary mass above which the mass distribution is truncated
+    mMin : float
+        Primary mass below which the mass distribution is truncated
+    log_dmMax : float
+        Log-scale over which the mass distribution is truncated above mMax
+    log_dmMin : float
+        Log-scale over which the mass distribution is truncated below mMin
+    bq : float
+        Power-law index on secondary mass distribution
+    mu_chi : float
+        Mean component spin magnitude
+    logsig_chi : float
+        Log standard deviation of component spin magnitude
+    f_iso : float
+        Fraction of spins in isotropic component
+    mu_cost : float
+        Mean spin-orbit misalignment angle in non-isotropic component
+    sig_cost : float
+        Standard deviation of spin-orbit misalignment angle in non-isotropic component
+    kappa : float
+        Power-law index on growth of merger rate with redshift
+
+    Returns
+    -------
+    detection_efficiency : float
+        Computed detection efficiency
+    Neff : float
+        Effective number of detections informing estimated detection efficiency
+    """
+
+    if selection=='obs':
+        injs = semianalytic['obs_snr']
+    else:
+        injs = semianalytic['expected_snr']
+
+    # Necessary normalization constnats
+    p_m1_norm = jnp.trapz(
+                    massModel(ref_m1_grid, alpha, mu_m1, sig_m1,
+                              10.**log_f_peak, mMax, mMin, 10.**log_dmMax,
+                              10.**log_dmMin),
+                    ref_m1_grid)
+    p_z_norm = jnp.trapz(ref_dVdz_grid*(1.+ref_z_grid)**(kappa-1.), ref_z_grid)
+
+    # Compute probability densities of found injections on proposed population
+    p_m1_semianalytic = massModel(injs['m1'], alpha, mu_m1, sig_m1, 10.**log_f_peak, mMax,
+                         mMin, 10.**log_dmMax, 10.**log_dmMin)/p_m1_norm
+    p_m2_semianalytic = (1.+bq)*injs['m2']**bq/(injs['m1']**(1.+bq)-tmp_min**(1.+bq))
+    p_a1_semianalytic = truncatedNormal(injs['a1'], mu_chi, 10.**logsig_chi, 0, 1)
+    p_a2_semianalytic = truncatedNormal(injs['a2'], mu_chi, 10.**logsig_chi, 0, 1)
+    p_cost1_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['cost1'], mu_cost, sig_cost, -1, 1)
+    p_cost2_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['cost2'], mu_cost, sig_cost, -1, 1)
+    p_z_semianalytic = injs['dVdz']*(1.+injs['z'])**(kappa-1.)/p_z_norm
+
+    # Impose boundaries
+    p_m1_semianalytic = jnp.where(injs['m1']<100., p_m1_semianalytic, 0)
+    p_m2_semianalytic = jnp.where(injs['m2']>tmp_min, p_m2_semianalytic, 0)
+    p_z_semianalytic = jnp.where(injs['z']<1.9, p_z_semianalytic, 0)
+
+    p_pop_semianalytic = p_m1_semianalytic*p_m2_semianalytic*p_z_semianalytic \
+        * p_a1_semianalytic*p_a2_semianalytic \
+        * p_cost1_semianalytic*p_cost2_semianalytic
+
+    # Form ratio of proposed weights over draw weights
+    inj_weights = p_pop_semianalytic/(injs['pdraw']/1.)
+
+    # Compute net detection efficiency
+    detection_efficiency = jnp.sum(inj_weights)/semianalytic['nTrials']
     Neff = jnp.sum(inj_weights)**2/jnp.sum(inj_weights**2)
 
     return detection_efficiency, Neff
@@ -549,4 +686,7 @@ def get_nn_efficiency(jitted_ann,
     xi = jnp.mean(inj_weights)
     Neff = jnp.sum(inj_weights)**2/jnp.sum(inj_weights**2)
 
-    return xi, Neff
+    # Compute effective number of draws from the target population
+    Neff_draws = jnp.sum(reweight_factors)**2/jnp.sum(reweight_factors**2)
+
+    return xi, Neff, Neff_draws
