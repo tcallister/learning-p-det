@@ -1,5 +1,5 @@
 import numpyro
-nChains = 1
+nChains = 2
 numpyro.set_host_device_count(nChains)
 numpyro.set_platform(platform='gpu')
 from numpyro.infer import NUTS,MCMC

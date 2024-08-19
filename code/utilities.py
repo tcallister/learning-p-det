@@ -154,7 +154,9 @@ def load_training_data(
     bns_train_data = pd.read_hdf('{0}/bns_training_data.hdf'.format(data_directory)).sample(n_bns, random_state=generator)
     nsbh_train_data = pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).sample(n_nsbh, random_state=generator)
 
-    # print(pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/bbh_training_data.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/bns_training_data.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/nsbh_training_data.hdf'.format(data_directory)).shape)
 
     # Read pre-prepared validation sets
     bbh_val_data = pd.read_hdf('{0}/bbh_validation_data.hdf'.format(data_directory)).sample(int(n_bbh/4), random_state=generator)
@@ -175,8 +177,6 @@ def load_training_data(
             random_state=generator.integers(0, high=1024))
         train_data = pd.concat([train_data, bbh_hopeless_data])
         val_data = pd.concat([val_data, val_bbh_hopeless_data])
-
-    # print(pd.read_hdf('{0}/rpo3-bbh-hopeless-formatted.hdf'.format(data_directory)).shape)
 
     # Hopeless BNS
     if n_bns_hopeless > 0:
@@ -208,7 +208,10 @@ def load_training_data(
         train_data = pd.concat([train_data, combined_hopeless_data])
         val_data = pd.concat([val_data, val_combined_hopeless_data])
 
-    print(pd.read_hdf('{0}/rpo3-combined-hopeless-formatted.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/rpo3-bbh-hopeless-formatted.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/rpo3-bns-hopeless-formatted.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/rpo3-nsbh-hopeless-formatted.hdf'.format(data_directory)).shape)
+    #print(pd.read_hdf('{0}/rpo3-combined-hopeless-formatted.hdf'.format(data_directory)).shape)
 
     # Read and split certain injections
     # Certain BBH
@@ -229,6 +232,8 @@ def load_training_data(
         val_data = pd.concat([val_data, val_bbh_certain_data])
 
     print(pd.read_hdf('{0}/rpo3-bbh-certain-formatted.hdf'.format(data_directory)).shape)
+    print(pd.read_hdf('{0}/rpo3-bns-certain-formatted.hdf'.format(data_directory)).shape)
+    print(pd.read_hdf('{0}/rpo3-nsbh-certain-formatted.hdf'.format(data_directory)).shape)
 
     # Certain BNS
     if n_bns_certain > 0:
