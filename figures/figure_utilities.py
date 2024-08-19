@@ -194,33 +194,11 @@ def make_hist(ax,
     ax.hist(new[param], density=True, bins=new_bins, histtype='step', color='black', zorder=-1, label='Detected (Emulator)')
     ax.hist(raw[param], density=True, bins=raw_bins, histtype='step', color='black', zorder=-1, ls=':', label='Intrinsic')
 
-    """
-    _, edges, _ = ax.hist(reference[param], density=True, bins=ref_bins, color=color, alpha=0.4, label='Detected (Actual)')
-    counts, _ = np.histogram(reference[param], bins=edges)
-    d_edge = edges[1] - edges[0]
-    ax.errorbar(0.5*(edges[1:] + edges[:-1]), counts/np.sum(counts*d_edge), np.sqrt(counts)/np.sum(counts*d_edge),
-                color=color,
-                ls='none',
-                capsize=1,
-                elinewidth=1,
-                capthick=1)
-
-    _, edges, _ = ax.hist(new[param], density=True, bins=new_bins, histtype='step', color='black', zorder=-1, label='Detected (Emulator)')
-    counts, _ = np.histogram(new[param], bins=edges)
-    d_edge = edges[1] - edges[0]
-    ax.errorbar(0.5*(edges[1:] + edges[:-1]), counts/np.sum(counts*d_edge), np.sqrt(counts)/np.sum(counts*d_edge),
-                color='black',
-                ls='none',
-                capsize=1,
-                elinewidth=1,
-                capthick=1)
-    """
-
     if legend:
         ax.legend(loc='upper left', fontsize=9.5, frameon=False)
 
     ks_result = ks_2samp(reference[param], new[param]).pvalue
-    test = ("{0:."+str(n_decimal_pvalue)+"f}").format(100*ks_result)+"\%"
+    test = ("p={0:."+str(n_decimal_pvalue)+"f}").format(100*ks_result)+"\%"
 
     ax.text(0.93, 0.93,
             test,

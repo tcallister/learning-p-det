@@ -10,5 +10,7 @@ Welcome to learning-p-det's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+   making-figures
+
 
 
