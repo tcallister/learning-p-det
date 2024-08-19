@@ -50,6 +50,7 @@ def addDerived(data):
     data['m1_source'] = data.m1_detector/(1.+data.redshift)
     data['Xdiff_PN'] = (data['a1']*data['cost1'] - data['a2']*data['cost2'])/2.
 
+
 # List of feature names that will be extracted and used as direct inputs
 # for neural network
 feature_names = ['amp_factor_a',
@@ -68,6 +69,7 @@ feature_names = ['amp_factor_a',
                         'Xdiff_PN',
                         'Xp_gen']
     
+
 def input_output(data):
 
     """
@@ -93,7 +95,27 @@ def input_output(data):
     
     return input_data,output_data
 
+
 def run_training(output, rng_seed):
+
+    """
+    Workhorse function that manages training of neural network.
+    This function gathers data, launches network training, and
+    creates various post-processing plots and diagnostics.
+
+    Parameters
+    ----------
+    output : `str`
+        Prefix that will be prepended to output files.
+        Should include filepath, e.g. "output/path/runName_"
+    rng_seed: `int`
+        Random seed to be used when selecting subsets of training
+        data
+
+    Returns
+    -------
+    None 
+    """
 
     # Instantiate neural network wrapper class
     nn = NeuralNetworkWrapper(
@@ -108,7 +130,7 @@ def run_training(output, rng_seed):
         addDerived = addDerived,
         feature_names = feature_names)
 
-    # Get data and load into network wrapper
+    # Get data and load training data
     train_data,val_data = load_training_data(
         '/project/kicp/tcallister/learning-p-det-data/input_data/',
         n_bbh = 90000,
@@ -130,7 +152,7 @@ def run_training(output, rng_seed):
 
     # Draw binaries from reference distributions, used to guide recovered
     # detection efficiencies during training.
-    # First, observation-like BBHs
+    # First, specify a BBH population consistent with astrophysical observations
     pop = {'min_m1':5,
            'max_m1':100,
            'alpha_m1':-3,
@@ -143,6 +165,8 @@ def run_training(output, rng_seed):
            'kappa':4.,
            'conditional_mass':True}
 
+    # Draw and store 2e5 events from this population, and tell the NN
+    # what the target detection efficiency should be
     nn.draw_from_reference_population(
            pop,
            200000,
@@ -205,9 +229,6 @@ def run_training(output, rng_seed):
     # Loss function parameters
     beta = 0.45
     nn.train_model(1000,beta)
-
-    #with open("{0}_history.json".format(output),'w') as jf:
-    #    json.dump(history.history,jf)
 
     # Save preprocessing scaler and trained weights
     pickle.dump(nn.input_scaler, open("{0}_input_scaler.pickle".format(output), "wb"))
