@@ -1,8 +1,8 @@
 # learning-p-det
 
-This repository holds code and data release products behind the paper "[Paper tidle]" (arXiv:2408.XXXXX)
+This repository holds code and data release products behind the paper "[Paper title]" (arXiv:2408.XXXXX)
 
-For documentation and instructions for reproducing our results, see https://tcallister.github.io/URL/
+For documentation and instructions for reproducing our results, see https://tcallister.github.io/learning-p-det/
 
 > [!Note]
 > A companion repository, https://github.com/tcallister/pdet, holds the trained neural network emulating LIGO-Virgo compact binary search sensitivities.
