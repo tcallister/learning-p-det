@@ -76,7 +76,7 @@
   <section id="training-the-network">
 <h1>Training the network<a class="headerlink" href="#training-the-network" title="Permalink to this heading"></a></h1>
 <p>Here, we describe the workflow followed to train a neural network emulator for the LIGO-Virgo detection probability</p>
-<p>Training is accomplished via the script <cite>code/run_network_training.py</cite>.
+<p>Training is accomplished via the script <code class="docutils literal notranslate"><span class="pre">code/run_network_training.py</span></code>.
 This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
 It can be run from the command line as follows:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nv">outputPrefix</span><span class="o">=</span>/path/to/output/runPrefix_
@@ -140,11 +140,22 @@ outputPrefix_weights.hdf5
 </div>
 <ul class="simple">
 <li><dl class="simple">
-<dt>The .jpeg files are created as diagnostics.</dt><dd><p>These show…</p>
+<dt>.jpeg files</dt><dd><p>These are provided as diagnostics.
+Each figure shows, for a given source class (BBH, BNS, or NSBH) and compact binary parameter, the distribution of detected events from among pipeline injections,
+compared to the distribution of detected events as predicted by the final, trained network.</p>
 </dd>
 </dl>
 </li>
-<li><p>Test</p></li>
+<li><dl class="simple">
+<dt>input_scaler.pickle</dt><dd><p>This is a pickled <cite>sklearn.preprocessing.StandardScaler</cite> object used to condition inputs to the network.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>ks.json</dt><dd><p>File containing summary statistics describing the quality of the trained network.</p>
+</dd>
+</dl>
+</li>
 </ul>
 </section>
 

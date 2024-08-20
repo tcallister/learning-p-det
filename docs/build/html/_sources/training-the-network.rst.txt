@@ -3,7 +3,7 @@ Training the network
 
 Here, we describe the workflow followed to train a neural network emulator for the LIGO-Virgo detection probability
 
-Training is accomplished via the script `code/run_network_training.py`.
+Training is accomplished via the script ``code/run_network_training.py``.
 This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
 It can be run from the command line as follows:
 
@@ -73,6 +73,12 @@ The result will be a set of files, saved to the provided output directory:
     outputPrefix_ks.json
     outputPrefix_weights.hdf5
     
-* The .jpeg files are created as diagnostics.
-    These show...
-* Test
+* .jpeg files
+    These are provided as diagnostics.
+    Each figure shows, for a given source class (BBH, BNS, or NSBH) and compact binary parameter, the distribution of detected events from among pipeline injections,
+    compared to the distribution of detected events as predicted by the final, trained network.
+* input_scaler.pickle
+    This is a pickled `sklearn.preprocessing.StandardScaler` object used to condition inputs to the network.
+* ks.json
+    File containing summary statistics describing the quality of the trained network.
+
