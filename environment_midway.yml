@@ -1,4 +1,4 @@
-name: stochastic-birefringence-cuda
+name: learning-p-det-midway 
 channels:
   - conda-forge
   - defaults
@@ -75,4 +75,4 @@ dependencies:
       - tzdata==2023.3
       - xarray==2023.10.1
       - xarray-einstats==0.6.0
-prefix: /home/tcallister/miniconda3/envs/stochastic-birefringence-cuda
+prefix: /home/tcallister/miniconda3/envs/learning-p-det-midway
