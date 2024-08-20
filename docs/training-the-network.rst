@@ -17,7 +17,7 @@ The first argument specifies the directory in which output files will be saved, 
 The second argument is an integer serving as a RNG key.
 
 It is **strongly recommended** that training be performed with a GPU.
-This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is *not* provided in the `environment.yml`
+This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is *not* provided in the ``environment.yml``
 file included in the repository. 
 Our experience is that the installation of GPU-compatible Tensorflow is highly platform-specific, requiring Tensorflow/CUDA/etc versions
 that depend on your exact computing environment and GPU model.
@@ -78,7 +78,15 @@ The result will be a set of files, saved to the provided output directory:
     Each figure shows, for a given source class (BBH, BNS, or NSBH) and compact binary parameter, the distribution of detected events from among pipeline injections,
     compared to the distribution of detected events as predicted by the final, trained network.
 * input_scaler.pickle
-    This is a pickled `sklearn.preprocessing.StandardScaler` object used to condition inputs to the network.
+    This is a pickled ``sklearn.preprocessing.StandardScaler`` object used to condition inputs to the network.
 * ks.json
     File containing summary statistics describing the quality of the trained network.
+    The four top-level keys (``['BBH', 'BNS', 'NSBH', 'alt_pop_1']``) each refer to a different population;
+    the first three to the population traced by pipline injections, and the last to a plausibly-astrophysical BBH distribution.
+    Within these top-level dictionaries, sub-entries give KS-test statistic p-values between recovered CBC parameter distributions and those
+    predicted by the trained network (the same information plotted in the .jpeg files listed above), as well as estimates of the integrated detection efficiency
+    (with uncertainties) predicted by the trained network.
+* weights.hdf5
+    Final trained weights and biases that define the network.
+
 
