@@ -54,4 +54,25 @@ The following, for example, shows the contents of the batch file we use on the U
     # Run training, using job number as RNG key
     python /home/tcallister/repositories/learning-p-det/code/run_network_training.py $output_file_prefix $SLURM_ARRAY_TASK_ID
 
+Network training generally takes a few hours (run time is dominated by the extra likelihood penalization on integrated detection efficiencies, as described in the paper text).
+The result will be a set of files, saved to the provided output directory:
 
+.. code-block:: bash
+
+    $ ls /path/to/output/
+
+    outputPrefix_BBH_chirp_mass_detector.jpeg
+    outputPrefix_BBH_cos_inclination.jpeg
+    outputPrefix_BBH_log_d.jpeg
+    ...
+    outputPrefix_BNS_chirp_mass_detector.jpeg
+    ...
+    outputPrefix_NSBH_chirp_mass_detector.jpeg
+    ...
+    outputPrefix_input_scaler.pickle
+    outputPrefix_ks.json
+    outputPrefix_weights.hdf5
+    
+* The .jpeg files are created as diagnostics.
+    These show...
+* Test

@@ -121,6 +121,31 @@ mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$output_
 python<span class="w"> </span>/home/tcallister/repositories/learning-p-det/code/run_network_training.py<span class="w"> </span><span class="nv">$output_file_prefix</span><span class="w"> </span><span class="nv">$SLURM_ARRAY_TASK_ID</span>
 </pre></div>
 </div>
+<p>Network training generally takes a few hours (run time is dominated by the extra likelihood penalization on integrated detection efficiencies, as described in the paper text).
+The result will be a set of files, saved to the provided output directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ls<span class="w"> </span>/path/to/output/
+
+outputPrefix_BBH_chirp_mass_detector.jpeg
+outputPrefix_BBH_cos_inclination.jpeg
+outputPrefix_BBH_log_d.jpeg
+...
+outputPrefix_BNS_chirp_mass_detector.jpeg
+...
+outputPrefix_NSBH_chirp_mass_detector.jpeg
+...
+outputPrefix_input_scaler.pickle
+outputPrefix_ks.json
+outputPrefix_weights.hdf5
+</pre></div>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt>The .jpeg files are created as diagnostics.</dt><dd><p>These show…</p>
+</dd>
+</dl>
+</li>
+<li><p>Test</p></li>
+</ul>
 </section>
 
 
