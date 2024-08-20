@@ -21,6 +21,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Hierarchical Inference" href="hierarchical-inference.html" />
     <link rel="prev" title="Figure generation" href="making-figures.html" /> 
 </head>
 
@@ -47,6 +48,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="making-figures.html">Figure generation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical-inference.html">Hierarchical Inference</a></li>
 </ul>
 
         </div>
@@ -79,7 +81,8 @@
 <p>Training is accomplished via the script <code class="docutils literal notranslate"><span class="pre">code/run_network_training.py</span></code>.
 This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
 It can be run from the command line as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nv">outputPrefix</span><span class="o">=</span>/path/to/output/runPrefix_
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>code/
+$<span class="w"> </span><span class="nv">outputPrefix</span><span class="o">=</span>/path/to/output/runPrefix_
 $<span class="w"> </span><span class="nv">key</span><span class="o">=</span><span class="m">11</span>
 $<span class="w"> </span>python<span class="w"> </span>run_network_training.py<span class="w"> </span><span class="nv">$outputPrefix</span><span class="w"> </span><span class="nv">$key</span>
 </pre></div>
@@ -174,6 +177,7 @@ predicted by the trained network (the same information plotted in the .jpeg file
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="making-figures.html" class="btn btn-neutral float-left" title="Figure generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="hierarchical-inference.html" class="btn btn-neutral float-right" title="Hierarchical Inference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -12,6 +12,7 @@ Welcome to learning-p-det's documentation!
 
    making-figures
    training-the-network
+   hierarchical-inference
 
 
 
