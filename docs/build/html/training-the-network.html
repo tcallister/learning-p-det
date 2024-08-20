@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Training the network &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Figure generation" href="making-figures.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="making-figures.html">Figure generation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Training the network</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Training the network</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/training-the-network.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="training-the-network">
+<h1>Training the network<a class="headerlink" href="#training-the-network" title="Permalink to this heading"></a></h1>
+<p>Here, we describe the workflow followed to train a neural network emulator for the LIGO-Virgo detection probability</p>
+<p>Training is accomplished via the script <code class="docutils literal notranslate"><span class="pre">code/run_network_training.py</span></code>.
+This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
+It can be run from the command line as follows:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nv">outputPrefix</span><span class="o">=</span>/path/to/output/runPrefix_
+$<span class="w"> </span><span class="nv">key</span><span class="o">=</span><span class="m">11</span>
+$<span class="w"> </span>python<span class="w"> </span>run_network_training.py<span class="w"> </span><span class="nv">$outputPrefix</span><span class="w"> </span><span class="nv">$key</span>
+</pre></div>
+</div>
+<p>The first argument specifies the directory in which output files will be saved, together with a prefix that will be prepended to filenames.
+The second argument is an integer serving as a RNG key.</p>
+<p>It is <strong>strongly recommended</strong> that training be performed with a GPU.
+This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is <em>not</em> provided in the <code class="docutils literal notranslate"><span class="pre">environment.yml</span></code>
+file included in the repository.
+Our experience is that the installation of GPU-compatible Tensorflow is highly platform-specific, requiring Tensorflow/CUDA/etc versions
+that depend on your exact computing environment and GPU model.</p>
+<p>As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
+It is straightforward to do this on a computing cluster with a task management system like Slurm.
+The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+
+<span class="c1">#SBATCH --job-name=array</span>
+<span class="c1">#SBATCH --account=kicp</span>
+<span class="c1">#SBATCH --output=/project/kicp/tcallister/trained_models/logs/log_%A_%a.out</span>
+<span class="c1">#SBATCH --error=/project/kicp/tcallister/trained_models/logs/log_%A_%a.err</span>
+<span class="c1">#SBATCH --array=0-19%4</span>
+<span class="c1">#SBATCH --time=14:00:00</span>
+<span class="c1">#SBATCH --partition=kicp-gpu</span>
+<span class="c1">#SBATCH --gpus=1</span>
+<span class="c1">#SBATCH --ntasks=1</span>
+<span class="c1">#SBATCH --mem=8G</span>
+
+<span class="c1"># Print the job number</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;My SLURM_ARRAY_TASK_ID: &quot;</span><span class="w"> </span><span class="nv">$SLURM_ARRAY_TASK_ID</span>
+
+<span class="c1"># Directory to store output files and trained network info</span>
+<span class="nv">output_dir</span><span class="o">=</span>/project/kicp/tcallister/trained_models/
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="nv">$output_dir</span>
+
+<span class="c1"># Append job number to form prefix for filenames</span>
+<span class="nv">output_file_prefix</span><span class="o">=</span><span class="nv">$output_dir</span>/job_<span class="k">$(</span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;%02d&quot;</span><span class="w"> </span><span class="nv">$SLURM_ARRAY_TASK_ID</span><span class="k">)</span>
+
+<span class="c1"># Run training, using job number as RNG key</span>
+python<span class="w"> </span>/home/tcallister/repositories/learning-p-det/code/run_network_training.py<span class="w"> </span><span class="nv">$output_file_prefix</span><span class="w"> </span><span class="nv">$SLURM_ARRAY_TASK_ID</span>
+</pre></div>
+</div>
+<p>Network training generally takes a few hours (run time is dominated by the extra likelihood penalization on integrated detection efficiencies, as described in the paper text).
+The result will be a set of files, saved to the provided output directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ls<span class="w"> </span>/path/to/output/
+
+outputPrefix_BBH_chirp_mass_detector.jpeg
+outputPrefix_BBH_cos_inclination.jpeg
+outputPrefix_BBH_log_d.jpeg
+...
+outputPrefix_BNS_chirp_mass_detector.jpeg
+...
+outputPrefix_NSBH_chirp_mass_detector.jpeg
+...
+outputPrefix_input_scaler.pickle
+outputPrefix_ks.json
+outputPrefix_weights.hdf5
+</pre></div>
+</div>
+<ul class="simple">
+<li><dl class="simple">
+<dt>.jpeg files</dt><dd><p>These are provided as diagnostics.
+Each figure shows, for a given source class (BBH, BNS, or NSBH) and compact binary parameter, the distribution of detected events from among pipeline injections,
+compared to the distribution of detected events as predicted by the final, trained network.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>input_scaler.pickle</dt><dd><p>This is a pickled <code class="docutils literal notranslate"><span class="pre">sklearn.preprocessing.StandardScaler</span></code> object used to condition inputs to the network.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>ks.json</dt><dd><p>File containing summary statistics describing the quality of the trained network.
+The four top-level keys (<code class="docutils literal notranslate"><span class="pre">['BBH',</span> <span class="pre">'BNS',</span> <span class="pre">'NSBH',</span> <span class="pre">'alt_pop_1']</span></code>) each refer to a different population;
+the first three to the population traced by pipline injections, and the last to a plausibly-astrophysical BBH distribution.
+Within these top-level dictionaries, sub-entries give KS-test statistic p-values between recovered CBC parameter distributions and those
+predicted by the trained network (the same information plotted in the .jpeg files listed above), as well as estimates of the integrated detection efficiency
+(with uncertainties) predicted by the trained network.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>weights.hdf5</dt><dd><p>Final trained weights and biases that define the network.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="making-figures.html" class="btn btn-neutral float-left" title="Figure generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

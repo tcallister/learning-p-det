@@ -11,6 +11,7 @@ Welcome to learning-p-det's documentation!
    :caption: Contents:
 
    making-figures
+   training-the-network
 
 
 
