@@ -4,6 +4,12 @@ Hierarchical Inference
 This page details how to rerun the hierarchical inference of the binary black hole population,
 using traditional injection-based selection effects as well as a trained neural network emulator.
 
+.. note::
+   Inference is orders of magnitude faster when running ``numpyro`` with a GPU.
+   A CUDA-enabled environment is provided in the file ``environment_midway.yml``.
+   This environment works on the University of Chicago's Midway3 cluster, but it may not work
+   in your local computing cluster, in which case you will likely need to build your own environment.
+
 Standard Selection Effects
 --------------------------
 
@@ -20,7 +26,7 @@ This file is converted to `popsummary <https://git.ligo.org/christian.adamcewicz
 
 .. code-block:: bash
 
-    # cd ../data/
+    $ cd ../data/
     $ python make_popsummary_standardInjections.py
 
 The result will be the file ``popsummary_standardInjections.h5``, containing posterior samples on population hyperparameters as well as

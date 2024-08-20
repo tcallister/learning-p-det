@@ -17,15 +17,16 @@ It can be run from the command line as follows:
 The first argument specifies the directory in which output files will be saved, together with a prefix that will be prepended to filenames.
 The second argument is an integer serving as a RNG key.
 
-It is **strongly recommended** that training be performed with a GPU.
-This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is *not* provided in the ``environment.yml``
-file included in the repository. 
-Our experience is that the installation of GPU-compatible Tensorflow is highly platform-specific, requiring Tensorflow/CUDA/etc versions
-that depend on your exact computing environment and GPU model.
+.. warning::
+   It is **strongly recommended** that training be performed with a GPU.
+   This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is *not* provided in the ``environment.yml``
+   file included in the repository. 
+   Our experience is that the installation of GPU-compatible Tensorflow is highly platform-specific, requiring Tensorflow/CUDA/etc versions
+   that depend on your exact computing environment and GPU model.
 
-As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
-It is straightforward to do this on a computing cluster with a task management system like Slurm.
-The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster
+   As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
+   It is straightforward to do this on a computing cluster with a task management system like Slurm.
+   The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster
 
 .. code-block:: bash
 

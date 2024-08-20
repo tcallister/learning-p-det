@@ -82,6 +82,13 @@
 <h1>Hierarchical Inference<a class="headerlink" href="#hierarchical-inference" title="Permalink to this heading"></a></h1>
 <p>This page details how to rerun the hierarchical inference of the binary black hole population,
 using traditional injection-based selection effects as well as a trained neural network emulator.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Inference is orders of magnitude faster when running <code class="docutils literal notranslate"><span class="pre">numpyro</span></code> with a GPU.
+A CUDA-enabled environment is provided in the file <code class="docutils literal notranslate"><span class="pre">environment_midway.yml</span></code>.
+This environment works on the University of Chicago’s Midway3 cluster, but it may not work
+in your local computing cluster, in which case you will likely need to build your own environment.</p>
+</div>
 <section id="standard-selection-effects">
 <h2>Standard Selection Effects<a class="headerlink" href="#standard-selection-effects" title="Permalink to this heading"></a></h2>
 <p>Standard hierarchical inference of the binary black hole population can be run as follows:</p>
@@ -92,7 +99,7 @@ $<span class="w"> </span>python<span class="w"> </span>run_standardInjections.py
 <p>This script initiates inference using <code class="docutils literal notranslate"><span class="pre">numpyro</span></code>, following the <code class="docutils literal notranslate"><span class="pre">baseline</span></code> likelihood function in <code class="docutils literal notranslate"><span class="pre">population_model.py</span></code>.
 Results will be saved to the file <code class="docutils literal notranslate"><span class="pre">data/output_standardInjections.cdf</span></code>.
 This file is converted to <a class="reference external" href="https://git.ligo.org/christian.adamcewicz/popsummary">popsummary</a> format by running</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># cd ../data/</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>../data/
 $<span class="w"> </span>python<span class="w"> </span>make_popsummary_standardInjections.py
 </pre></div>
 </div>

@@ -89,6 +89,8 @@ $<span class="w"> </span>python<span class="w"> </span>run_network_training.py<s
 </div>
 <p>The first argument specifies the directory in which output files will be saved, together with a prefix that will be prepended to filenames.
 The second argument is an integer serving as a RNG key.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
 <p>It is <strong>strongly recommended</strong> that training be performed with a GPU.
 This, in turn, will require a GPU-enabled installation of Tensorflow and associated libraries, which is <em>not</em> provided in the <code class="docutils literal notranslate"><span class="pre">environment.yml</span></code>
 file included in the repository.
@@ -97,6 +99,7 @@ that depend on your exact computing environment and GPU model.</p>
 <p>As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
 It is straightforward to do this on a computing cluster with a task management system like Slurm.
 The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster</p>
+</div>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
 
 <span class="c1">#SBATCH --job-name=array</span>
