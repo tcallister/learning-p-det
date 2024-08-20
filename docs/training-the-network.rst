@@ -9,6 +9,7 @@ It can be run from the command line as follows:
 
 .. code-block:: bash
 
+    $ cd code/
     $ outputPrefix=/path/to/output/runPrefix_
     $ key=11
     $ python run_network_training.py $outputPrefix $key 

@@ -34,5 +34,5 @@ mcmc.print_summary()
 
 # Save out data
 data = az.from_numpyro(mcmc)
-az.to_netcdf(data,"output_standardInjections.cdf")
+az.to_netcdf(data,"../data/output_standardInjections.cdf")
 
