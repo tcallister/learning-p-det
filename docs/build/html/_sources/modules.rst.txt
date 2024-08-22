@@ -7,3 +7,6 @@ Modules
    diagnostics
    draw_new_injections
    format_training_data
+   getData
+   population_model
+   prep_injections

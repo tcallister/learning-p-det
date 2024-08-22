@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>population_model &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">population_model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for population_model</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpyro</span>
+<span class="kn">import</span> <span class="nn">numpyro.distributions</span> <span class="k">as</span> <span class="nn">dist</span>
+<span class="kn">import</span> <span class="nn">jax</span>
+<span class="kn">import</span> <span class="nn">jax.numpy</span> <span class="k">as</span> <span class="nn">jnp</span>
+<span class="kn">from</span> <span class="nn">jax.scipy.special</span> <span class="kn">import</span> <span class="n">erf</span><span class="p">,</span><span class="n">erfinv</span>
+<span class="kn">from</span> <span class="nn">jax</span> <span class="kn">import</span> <span class="n">vmap</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
+<span class="kn">from</span> <span class="nn">astropy.cosmology</span> <span class="kn">import</span> <span class="n">Planck15</span><span class="p">,</span><span class="n">z_at_value</span>
+<span class="kn">from</span> <span class="nn">interpax</span> <span class="kn">import</span> <span class="n">interp1d</span>
+
+<span class="n">logit_std</span> <span class="o">=</span> <span class="mf">2.5</span>
+<span class="n">tmp_max</span> <span class="o">=</span> <span class="mf">100.</span>
+<span class="n">tmp_min</span> <span class="o">=</span> <span class="mf">2.</span>
+
+
+<div class="viewcode-block" id="truncatedNormal"><a class="viewcode-back" href="../population_model.html#population_model.truncatedNormal">[docs]</a><span class="k">def</span> <span class="nf">truncatedNormal</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">lowCutoff</span><span class="p">,</span> <span class="n">highCutoff</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Jax-enabled truncated normal distribution</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    samples : `jax.numpy.array` or float</span>
+<span class="sd">        Locations at which to evaluate probability density</span>
+<span class="sd">    mu : float</span>
+<span class="sd">        Mean of truncated normal</span>
+<span class="sd">    sigma : float</span>
+<span class="sd">        Standard deviation of truncated normal</span>
+<span class="sd">    lowCutoff : float</span>
+<span class="sd">        Lower truncation bound</span>
+<span class="sd">    highCutoff : float</span>
+<span class="sd">        Upper truncation bound</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ps : jax.numpy.array or float</span>
+<span class="sd">        Probability density at the locations of `samples`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">lowCutoff</span><span class="o">-</span><span class="n">mu</span><span class="p">)</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">highCutoff</span><span class="o">-</span><span class="n">mu</span><span class="p">)</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="o">-</span><span class="n">erf</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">erf</span><span class="p">(</span><span class="n">b</span><span class="p">))</span>
+    <span class="n">ps</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">samples</span><span class="o">-</span><span class="n">mu</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="n">norm</span>
+    <span class="k">return</span> <span class="n">ps</span></div>
+
+
+<div class="viewcode-block" id="massModel"><a class="viewcode-back" href="../population_model.html#population_model.massModel">[docs]</a><span class="k">def</span> <span class="nf">massModel</span><span class="p">(</span><span class="n">m1</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="n">f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="n">dmMax</span><span class="p">,</span> <span class="n">dmMin</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Baseline primary mass model, described as a mixture between a power law</span>
+<span class="sd">    and gaussian, with exponential tapering functions at high and low masses</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    m1 : array or float</span>
+<span class="sd">        Primary masses at which to evaluate probability densities</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">        Power-law index</span>
+<span class="sd">    mu_m1 : float</span>
+<span class="sd">        Location of possible Gaussian peak</span>
+<span class="sd">    sig_m1 : float</span>
+<span class="sd">        Stanard deviation of possible Gaussian peak</span>
+<span class="sd">    f_peak : float</span>
+<span class="sd">        Approximate fraction of events contained within Gaussian peak (not exact due to tapering)</span>
+<span class="sd">    mMax : float</span>
+<span class="sd">        Location at which high-mass tapering begins</span>
+<span class="sd">    mMin : float</span>
+<span class="sd">        Location at which low-mass tapering begins</span>
+<span class="sd">    dmMax : float</span>
+<span class="sd">        Scale width of high-mass tapering function</span>
+<span class="sd">    dmMin : float</span>
+<span class="sd">        Scale width of low-mass tapering function</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    p_m1s : jax.numpy.array</span>
+<span class="sd">        Unnormalized array of probability densities</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Define power-law and peak</span>
+    <span class="n">p_m1_pl</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha</span><span class="p">)</span><span class="o">*</span><span class="n">m1</span><span class="o">**</span><span class="p">(</span><span class="n">alpha</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">tmp_max</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha</span><span class="p">)</span> <span class="o">-</span> <span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha</span><span class="p">))</span>
+    <span class="n">p_m1_peak</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">m1</span><span class="o">-</span><span class="n">mu_m1</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">sig_m1</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">sig_m1</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Compute low- and high-mass filters</span>
+    <span class="n">low_filter</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">m1</span><span class="o">-</span><span class="n">mMin</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">dmMin</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">low_filter</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m1</span><span class="o">&lt;</span><span class="n">mMin</span><span class="p">,</span> <span class="n">low_filter</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">high_filter</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">m1</span><span class="o">-</span><span class="n">mMax</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">dmMax</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+    <span class="n">high_filter</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m1</span><span class="o">&gt;</span><span class="n">mMax</span><span class="p">,</span> <span class="n">high_filter</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+
+    <span class="c1"># Apply filters to combined power-law and peak</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">f_peak</span><span class="o">*</span><span class="n">p_m1_peak</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_peak</span><span class="p">)</span><span class="o">*</span><span class="n">p_m1_pl</span><span class="p">)</span><span class="o">*</span><span class="n">low_filter</span><span class="o">*</span><span class="n">high_filter</span></div>
+
+
+<div class="viewcode-block" id="get_value_from_logit"><a class="viewcode-back" href="../population_model.html#population_model.get_value_from_logit">[docs]</a><span class="k">def</span> <span class="nf">get_value_from_logit</span><span class="p">(</span><span class="n">logit_x</span><span class="p">,</span> <span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to map a variable `logit_x`, defined on `(-inf,+inf)`, to a quantity `x`</span>
+<span class="sd">    defined on the interval `(x_min,x_max)`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    logit_x : float</span>
+<span class="sd">        Quantity to inverse-logit transform</span>
+<span class="sd">    x_min : float</span>
+<span class="sd">        Lower bound of `x`</span>
+<span class="sd">    x_max : float</span>
+<span class="sd">        Upper bound of `x`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : float</span>
+<span class="sd">       The inverse logit transform of `logit_x`</span>
+<span class="sd">    dlogit_dx : float</span>
+<span class="sd">       The Jacobian between `logit_x` and `x`; divide by this quantity to convert a uniform prior on `logit_x` to a uniform prior on `x`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">exp_logit</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logit_x</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">exp_logit</span><span class="o">*</span><span class="n">x_max</span> <span class="o">+</span> <span class="n">x_min</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">exp_logit</span><span class="p">)</span>
+    <span class="n">dlogit_dx</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">x_min</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="n">x_max</span><span class="o">-</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span><span class="n">dlogit_dx</span></div>
+
+
+<div class="viewcode-block" id="baseline"><a class="viewcode-back" href="../population_model.html#population_model.baseline">[docs]</a><span class="k">def</span> <span class="nf">baseline</span><span class="p">(</span><span class="n">sampleDict</span><span class="p">,</span> <span class="n">injectionDict</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implementation of a Gaussian effective spin distribution for inference within `numpyro`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sampleDict : dict</span>
+<span class="sd">        Precomputed dictionary containing posterior samples for each event in our catalog</span>
+<span class="sd">    injectionDict : dict</span>
+<span class="sd">        Precomputed dictionary containing successfully recovered injections</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1">#############################</span>
+    <span class="c1"># Sample our hyperparameters</span>
+    <span class="c1">#############################</span>
+
+    <span class="n">logR20</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logR20&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">mu_m1</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;mu_m1&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">))</span>
+    <span class="n">mMin</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;mMin&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">15</span><span class="p">))</span>
+    <span class="n">bq</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;bq&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;kappa&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="n">R20</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;R20&quot;</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logR20</span><span class="p">)</span>
+
+    <span class="c1"># For some hyperparameters, sample from unconstrained logit space</span>
+    <span class="n">logit_sig_m1</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_sig_m1&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_f_peak</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_f_peak&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mMax</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mMax&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_dmMin</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_dmMin&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_dmMax</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_dmMax&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mu_chi</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mu_chi&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_logsig_chi</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_logsig_chi&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mu_cost</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mu_cost&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_sig_cost</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_sig_cost&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_f_iso</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_f_iso&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+
+    <span class="c1"># Convert to physical parameters, and get relevant jacobian</span>
+    <span class="n">sig_m1</span><span class="p">,</span> <span class="n">jac_sig_m1</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_sig_m1</span><span class="p">,</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">15.</span><span class="p">)</span>
+    <span class="n">log_f_peak</span><span class="p">,</span> <span class="n">jac_log_f_peak</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_f_peak</span><span class="p">,</span> <span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    <span class="n">mMax</span><span class="p">,</span> <span class="n">jac_mMax</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mMax</span><span class="p">,</span> <span class="mf">50.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">)</span>
+    <span class="n">log_dmMin</span><span class="p">,</span> <span class="n">jac_log_dmMin</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_dmMin</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">log_dmMax</span><span class="p">,</span> <span class="n">jac_log_dmMax</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_dmMax</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+    <span class="n">mu_chi</span><span class="p">,</span> <span class="n">jac_mu_chi</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mu_chi</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">logsig_chi</span><span class="p">,</span> <span class="n">jac_logsig_chi</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_logsig_chi</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    <span class="n">mu_cost</span><span class="p">,</span> <span class="n">jac_mu_cost</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mu_cost</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">sig_cost</span><span class="p">,</span> <span class="n">jac_sig_cost</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_sig_cost</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
+    <span class="n">f_iso</span><span class="p">,</span> <span class="n">jac_f_iso</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_f_iso</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Record parameters</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;sig_m1&quot;</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_f_peak&quot;</span><span class="p">,</span> <span class="n">log_f_peak</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mMax&quot;</span><span class="p">,</span> <span class="n">mMax</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_dmMin&quot;</span><span class="p">,</span> <span class="n">log_dmMin</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_dmMax&quot;</span><span class="p">,</span> <span class="n">log_dmMax</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mu_chi&quot;</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;logsig_chi&quot;</span><span class="p">,</span> <span class="n">logsig_chi</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mu_cost&quot;</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;sig_cost&quot;</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;f_iso&quot;</span><span class="p">,</span> <span class="n">f_iso</span><span class="p">)</span>
+
+    <span class="c1"># Convert to uniform prior by undoing normal prior in logit space and applying jacobian</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_sig_m1&quot;</span><span class="p">,</span> <span class="n">logit_sig_m1</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_sig_m1</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_f_peak&quot;</span><span class="p">,</span> <span class="n">logit_log_f_peak</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_f_peak</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mMax&quot;</span><span class="p">,</span> <span class="n">logit_mMax</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mMax</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_dmMin&quot;</span><span class="p">,</span> <span class="n">logit_log_dmMin</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_dmMin</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_dmMax&quot;</span><span class="p">,</span> <span class="n">logit_log_dmMax</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_dmMax</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mu_chi&quot;</span><span class="p">,</span> <span class="n">logit_mu_chi</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mu_chi</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_logsig_chi&quot;</span><span class="p">,</span> <span class="n">logit_logsig_chi</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_logsig_chi</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mu_cost&quot;</span><span class="p">,</span> <span class="n">logit_mu_cost</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mu_cost</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_sig_cost&quot;</span><span class="p">,</span> <span class="n">logit_sig_cost</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_sig_cost</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_f_iso&quot;</span><span class="p">,</span> <span class="n">logit_f_iso</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_f_iso</span><span class="p">))</span>
+
+    <span class="c1"># Normalization</span>
+    <span class="n">p_m1_norm</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="mf">20.</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span>
+    <span class="n">p_z_norm</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="mf">0.2</span><span class="p">)</span><span class="o">**</span><span class="n">kappa</span>
+
+    <span class="c1">########################################</span>
+    <span class="c1"># Compute expected number of detections</span>
+    <span class="c1">########################################</span>
+
+    <span class="c1"># Read out found injections</span>
+    <span class="c1"># Note that `pop_reweight` is the inverse of the draw weights for each event</span>
+    <span class="n">a1_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;a1&#39;</span><span class="p">]</span>
+    <span class="n">a2_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;a2&#39;</span><span class="p">]</span>
+    <span class="n">cost1_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;cost1&#39;</span><span class="p">]</span>
+    <span class="n">cost2_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;cost2&#39;</span><span class="p">]</span>
+    <span class="n">m1_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;m1&#39;</span><span class="p">]</span>
+    <span class="n">m2_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;m2&#39;</span><span class="p">]</span>
+    <span class="n">z_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+    <span class="n">dVdz_det</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;dVdz&#39;</span><span class="p">]</span>
+    <span class="n">p_draw</span> <span class="o">=</span> <span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;p_draw_m1m2z&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;p_draw_a1a2cost1cost2&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Compute proposed population weights</span>
+    <span class="n">p_m1_det</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="n">m1_det</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span><span class="o">/</span><span class="n">p_m1_norm</span>
+    <span class="n">p_m2_det</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">*</span><span class="n">m2_det</span><span class="o">**</span><span class="n">bq</span><span class="o">/</span><span class="p">(</span><span class="n">m1_det</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">-</span><span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">))</span>
+    <span class="n">p_a1_det</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a1_det</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">p_a2_det</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a2_det</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">p_cost1_det</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost1_det</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">p_cost2_det</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost2_det</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">p_z_det</span> <span class="o">=</span> <span class="n">dVdz_det</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z_det</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">kappa</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span><span class="o">/</span><span class="n">p_z_norm</span> 
+    <span class="n">R_pop_det</span> <span class="o">=</span> <span class="n">R20</span><span class="o">*</span><span class="n">p_m1_det</span><span class="o">*</span><span class="n">p_m2_det</span><span class="o">*</span><span class="n">p_z_det</span><span class="o">*</span><span class="n">p_a1_det</span><span class="o">*</span><span class="n">p_a2_det</span><span class="o">*</span><span class="n">p_cost1_det</span><span class="o">*</span><span class="n">p_cost2_det</span>
+
+    <span class="c1"># Form ratio of proposed weights over draw weights</span>
+    <span class="n">inj_weights</span> <span class="o">=</span> <span class="n">R_pop_det</span><span class="o">/</span><span class="p">(</span><span class="n">p_draw</span><span class="p">)</span>
+    
+    <span class="c1"># As a fit diagnostic, compute effective number of injections</span>
+    <span class="n">nEff_inj</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">inj_weights</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">inj_weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">nObs</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">sampleDict</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;nEff_inj_per_event&quot;</span><span class="p">,</span> <span class="n">nEff_inj</span><span class="o">/</span><span class="n">nObs</span><span class="p">)</span>
+
+    <span class="c1"># Compute net detection efficiency and add to log-likelihood</span>
+    <span class="n">Nexp</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">inj_weights</span><span class="p">)</span><span class="o">/</span><span class="n">injectionDict</span><span class="p">[</span><span class="s1">&#39;nTrials&#39;</span><span class="p">]</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;rate&quot;</span><span class="p">,</span> <span class="o">-</span><span class="n">Nexp</span><span class="p">)</span>
+    
+    <span class="c1"># This function defines the per-event log-likelihood</span>
+    <span class="k">def</span> <span class="nf">logp</span><span class="p">(</span><span class="n">m1_sample</span><span class="p">,</span> <span class="n">m2_sample</span><span class="p">,</span> <span class="n">z_sample</span><span class="p">,</span> <span class="n">dVdz_sample</span><span class="p">,</span> <span class="n">a1_sample</span><span class="p">,</span> <span class="n">a2_sample</span><span class="p">,</span> <span class="n">cost1_sample</span><span class="p">,</span> <span class="n">cost2_sample</span><span class="p">,</span> <span class="n">priors</span><span class="p">):</span>
+
+        <span class="c1"># Compute proposed population weights</span>
+        <span class="n">p_m1</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="n">m1_sample</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span><span class="o">/</span><span class="n">p_m1_norm</span>
+        <span class="n">p_m2</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">*</span><span class="n">m2_sample</span><span class="o">**</span><span class="n">bq</span><span class="o">/</span><span class="p">(</span><span class="n">m1_sample</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">-</span><span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">))</span>
+        <span class="n">p_a1</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a1_sample</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_a2</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a2_sample</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_cost1</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost1_sample</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_cost2</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost2_sample</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_z</span> <span class="o">=</span> <span class="n">dVdz_sample</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z_sample</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">kappa</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span><span class="o">/</span><span class="n">p_z_norm</span>
+        <span class="n">R_pop</span> <span class="o">=</span> <span class="n">R20</span><span class="o">*</span><span class="n">p_m1</span><span class="o">*</span><span class="n">p_m2</span><span class="o">*</span><span class="n">p_z</span><span class="o">*</span><span class="n">p_a1</span><span class="o">*</span><span class="n">p_a2</span><span class="o">*</span><span class="n">p_cost1</span><span class="o">*</span><span class="n">p_cost2</span>
+
+        <span class="n">mc_weights</span> <span class="o">=</span> <span class="n">R_pop</span><span class="o">/</span><span class="n">priors</span>
+
+        <span class="c1"># Compute effective number of samples and return log-likelihood</span>
+        <span class="n">n_eff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mc_weights</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mc_weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>     
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mc_weights</span><span class="p">)),</span> <span class="n">n_eff</span> <span class="c1">#m_choice</span>
+    
+    <span class="c1"># Map the log-likelihood function over each event in our catalog</span>
+    <span class="n">log_ps</span><span class="p">,</span> <span class="n">n_effs</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">logp</span><span class="p">)(</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;m1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;m2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;dVc_dz&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;a1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;a2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;cost1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;cost2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;z_prior&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]))</span>
+        
+    <span class="c1"># As a diagnostic, save minimum number of effective samples across all events</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s1">&#39;min_log_neff&#39;</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">n_effs</span><span class="p">)))</span>
+
+    <span class="c1"># Tally log-likelihoods across our catalog</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;logp&quot;</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">log_ps</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="baseline_dynamicInjections"><a class="viewcode-back" href="../population_model.html#population_model.baseline_dynamicInjections">[docs]</a><span class="k">def</span> <span class="nf">baseline_dynamicInjections</span><span class="p">(</span><span class="n">sampleDict</span><span class="p">,</span><span class="n">injectionCDFs</span><span class="p">,</span><span class="n">Pdet</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implementation of a Gaussian effective spin distribution for inference within `numpyro`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sampleDict : `dict`</span>
+<span class="sd">        Precomputed dictionary containing posterior samples for each event in our catalog</span>
+<span class="sd">    injectionDict : `dict`</span>
+<span class="sd">        Precomputed dictionary containing successfully recovered injections</span>
+<span class="sd">    Pdet : `pdet.emulator`</span>
+<span class="sd">        Callable emulator object evaluating trained detection probabilities.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="c1">#############################</span>
+    <span class="c1"># Sample our hyperparameters</span>
+    <span class="c1">#############################</span>
+
+    <span class="n">logR20</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logR20&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;alpha&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">mu_m1</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;mu_m1&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">))</span>
+    <span class="n">mMin</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;mMin&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">15</span><span class="p">))</span>
+    <span class="n">bq</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;bq&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;kappa&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="n">R20</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;R20&quot;</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logR20</span><span class="p">)</span>
+
+    <span class="c1"># For some hyperparameters, sample from unconstrained logit space</span>
+    <span class="n">logit_sig_m1</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_sig_m1&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_f_peak</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_f_peak&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mMax</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mMax&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_dmMin</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_dmMin&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_log_dmMax</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_log_dmMax&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mu_chi</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mu_chi&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_logsig_chi</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_logsig_chi&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_mu_cost</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_mu_cost&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_sig_cost</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_sig_cost&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+    <span class="n">logit_f_iso</span> <span class="o">=</span> <span class="n">numpyro</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="s2">&quot;logit_f_iso&quot;</span><span class="p">,</span> <span class="n">dist</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">logit_std</span><span class="p">))</span>
+
+    <span class="c1"># Convert to physical parameters, and get relevant jacobian</span>
+    <span class="n">sig_m1</span><span class="p">,</span> <span class="n">jac_sig_m1</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_sig_m1</span><span class="p">,</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">15.</span><span class="p">)</span>
+    <span class="n">log_f_peak</span><span class="p">,</span> <span class="n">jac_log_f_peak</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_f_peak</span><span class="p">,</span> <span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    <span class="n">mMax</span><span class="p">,</span> <span class="n">jac_mMax</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mMax</span><span class="p">,</span> <span class="mf">50.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">)</span>
+    <span class="n">log_dmMin</span><span class="p">,</span> <span class="n">jac_log_dmMin</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_dmMin</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">log_dmMax</span><span class="p">,</span> <span class="n">jac_log_dmMax</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_log_dmMax</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+    <span class="n">mu_chi</span><span class="p">,</span> <span class="n">jac_mu_chi</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mu_chi</span><span class="p">,</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">logsig_chi</span><span class="p">,</span> <span class="n">jac_logsig_chi</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_logsig_chi</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">0.</span><span class="p">)</span>
+    <span class="n">mu_cost</span><span class="p">,</span> <span class="n">jac_mu_cost</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_mu_cost</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+    <span class="n">sig_cost</span><span class="p">,</span> <span class="n">jac_sig_cost</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_sig_cost</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
+    <span class="n">f_iso</span><span class="p">,</span> <span class="n">jac_f_iso</span> <span class="o">=</span> <span class="n">get_value_from_logit</span><span class="p">(</span><span class="n">logit_f_iso</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Record parameters</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;sig_m1&quot;</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_f_peak&quot;</span><span class="p">,</span> <span class="n">log_f_peak</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mMax&quot;</span><span class="p">,</span> <span class="n">mMax</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_dmMin&quot;</span><span class="p">,</span> <span class="n">log_dmMin</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;log_dmMax&quot;</span><span class="p">,</span> <span class="n">log_dmMax</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mu_chi&quot;</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;logsig_chi&quot;</span><span class="p">,</span> <span class="n">logsig_chi</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;mu_cost&quot;</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;sig_cost&quot;</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;f_iso&quot;</span><span class="p">,</span> <span class="n">f_iso</span><span class="p">)</span>
+
+    <span class="c1"># Convert to uniform prior by undoing normal prior in logit space and applying jacobian</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_sig_m1&quot;</span><span class="p">,</span> <span class="n">logit_sig_m1</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_sig_m1</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_f_peak&quot;</span><span class="p">,</span> <span class="n">logit_log_f_peak</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_f_peak</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mMax&quot;</span><span class="p">,</span> <span class="n">logit_mMax</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mMax</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_dmMin&quot;</span><span class="p">,</span> <span class="n">logit_log_dmMin</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_dmMin</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_log_dmMax&quot;</span><span class="p">,</span> <span class="n">logit_log_dmMax</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_log_dmMax</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mu_chi&quot;</span><span class="p">,</span> <span class="n">logit_mu_chi</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mu_chi</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_logsig_chi&quot;</span><span class="p">,</span> <span class="n">logit_logsig_chi</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_logsig_chi</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_mu_cost&quot;</span><span class="p">,</span> <span class="n">logit_mu_cost</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_mu_cost</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_sig_cost&quot;</span><span class="p">,</span> <span class="n">logit_sig_cost</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_sig_cost</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;p_f_iso&quot;</span><span class="p">,</span> <span class="n">logit_f_iso</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">logit_std</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">-</span><span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jac_f_iso</span><span class="p">))</span>
+
+    <span class="c1"># Normalization</span>
+    <span class="n">p_m1_norm</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="mf">20.</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span>
+    <span class="n">p_z_norm</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="mf">0.2</span><span class="p">)</span><span class="o">**</span><span class="n">kappa</span>
+
+    <span class="c1">########################################</span>
+    <span class="c1"># Compute expected number of detections</span>
+    <span class="c1">########################################</span>
+
+    <span class="c1"># Read out injection CDFs</span>
+    <span class="n">inj_m1_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_m1_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_m2_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_m2_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_a1_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_a1_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_a2_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_a2_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_cost1_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_cost1_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_cost2_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_cost2_cdfs&#39;</span><span class="p">]</span>
+    <span class="n">inj_z_cdfs</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;inj_z_cdfs&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Define f(m1) over reference grid</span>
+    <span class="c1"># Use this to obtain the integral over f(m1)/f(m_ref), build CDF, and interpolate to obtain m1 values</span>
+    <span class="n">reference_f_m1</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_lnm1_grid&#39;</span><span class="p">]),</span>
+                               <span class="n">alpha</span><span class="p">,</span>
+                               <span class="n">mu_m1</span><span class="p">,</span>
+                               <span class="n">sig_m1</span><span class="p">,</span>
+                               <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span>
+                               <span class="n">mMax</span><span class="p">,</span>
+                               <span class="n">mMin</span><span class="p">,</span>
+                               <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span>
+                               <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span>
+
+    <span class="c1"># This is the cumulative integral of f(m1) </span>
+    <span class="n">reference_cdf_m1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">reference_f_m1</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_lnm1_grid&#39;</span><span class="p">]))</span><span class="o">*</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;dlnm1&#39;</span><span class="p">]</span>
+
+    <span class="c1"># This is the complete integral \Int f(m1) * dm1</span>
+    <span class="n">reference_f_m1_integral</span> <span class="o">=</span> <span class="n">reference_cdf_m1</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># This is the normalized CDF of m1.</span>
+    <span class="c1"># Use this to interpolate and draw random primary masses</span>
+    <span class="n">reference_cdf_m1</span> <span class="o">/=</span> <span class="n">reference_f_m1_integral</span>
+    <span class="n">inj_m1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">inj_m1_cdfs</span><span class="p">,</span> <span class="n">reference_cdf_m1</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_lnm1_grid&#39;</span><span class="p">]))</span>
+
+    <span class="c1"># Secondary masses</span>
+    <span class="n">inj_m2</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span> <span class="o">+</span> <span class="n">inj_m2_cdfs</span><span class="o">*</span><span class="p">(</span><span class="n">inj_m1</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span> <span class="o">-</span> <span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)),</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">))</span>
+
+    <span class="c1"># Spin magnitudes</span>
+    <span class="n">sqrt_2</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">2.</span><span class="p">)</span>
+    <span class="n">chi_erf_a</span> <span class="o">=</span> <span class="n">erf</span><span class="p">(</span><span class="o">-</span><span class="n">mu_chi</span><span class="o">/</span><span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="o">*</span><span class="n">sqrt_2</span><span class="p">))</span>
+    <span class="n">chi_erf_b</span> <span class="o">=</span> <span class="n">erf</span><span class="p">((</span><span class="mi">1</span><span class="o">-</span><span class="n">mu_chi</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="o">*</span><span class="n">sqrt_2</span><span class="p">))</span>
+    <span class="n">inj_a1</span> <span class="o">=</span> <span class="n">mu_chi</span> <span class="o">+</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="o">*</span><span class="n">sqrt_2</span><span class="o">*</span><span class="n">erfinv</span><span class="p">(</span><span class="n">inj_a1_cdfs</span><span class="o">*</span><span class="p">(</span><span class="n">chi_erf_b</span><span class="o">-</span><span class="n">chi_erf_a</span><span class="p">)</span> <span class="o">+</span> <span class="n">chi_erf_a</span><span class="p">)</span>
+    <span class="n">inj_a2</span> <span class="o">=</span> <span class="n">mu_chi</span> <span class="o">+</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="o">*</span><span class="n">sqrt_2</span><span class="o">*</span><span class="n">erfinv</span><span class="p">(</span><span class="n">inj_a2_cdfs</span><span class="o">*</span><span class="p">(</span><span class="n">chi_erf_b</span><span class="o">-</span><span class="n">chi_erf_a</span><span class="p">)</span> <span class="o">+</span> <span class="n">chi_erf_a</span><span class="p">)</span>
+
+    <span class="c1"># Spin tilts</span>
+    <span class="n">reference_p_cost</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_cost_grid&#39;</span><span class="p">],</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">reference_cdf_cost</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">reference_p_cost</span><span class="p">)</span>
+    <span class="n">reference_cdf_cost</span> <span class="o">-=</span> <span class="n">reference_cdf_cost</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">reference_cdf_cost</span> <span class="o">/=</span> <span class="n">reference_cdf_cost</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">inj_cost1</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">inj_cost1_cdfs</span><span class="p">,</span> <span class="n">reference_cdf_cost</span><span class="p">,</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_cost_grid&#39;</span><span class="p">])</span>
+    <span class="n">inj_cost2</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">inj_cost2_cdfs</span><span class="p">,</span> <span class="n">reference_cdf_cost</span><span class="p">,</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_cost_grid&#39;</span><span class="p">])</span>
+
+    <span class="c1"># Redshifts</span>
+    <span class="c1"># As described in the paper text, we will draw from a *fixed* redshift distribution,</span>
+    <span class="c1"># and subsequently reweight to target redshift distribution below</span>
+    <span class="n">inj_kappa</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.5</span>
+    <span class="n">reference_f_z</span> <span class="o">=</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_dVdz_grid&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_z_grid&#39;</span><span class="p">])</span><span class="o">**</span><span class="p">(</span><span class="n">inj_kappa</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span>
+    <span class="n">reference_cdf_z</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">reference_f_z</span><span class="p">)</span><span class="o">*</span><span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;dz&#39;</span><span class="p">]</span>
+    <span class="n">reference_f_z_integral</span> <span class="o">=</span> <span class="n">reference_cdf_z</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">reference_cdf_z</span> <span class="o">/=</span> <span class="n">reference_f_z_integral</span>
+    <span class="n">inj_z</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">inj_z_cdfs</span><span class="p">,</span> <span class="n">reference_cdf_z</span><span class="p">,</span> <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;reference_z_grid&#39;</span><span class="p">])</span>
+
+    <span class="c1"># Compile dynamically drawn injections</span>
+    <span class="n">injection_params</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="n">inj_m1</span><span class="p">,</span>
+        <span class="n">inj_m2</span><span class="p">,</span>
+        <span class="n">inj_a1</span><span class="p">,</span>
+        <span class="n">inj_a2</span><span class="p">,</span>
+        <span class="n">inj_cost1</span><span class="p">,</span>
+        <span class="n">inj_cost2</span><span class="p">,</span>
+        <span class="n">inj_z</span><span class="p">,</span>
+        <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;cos_inclination&#39;</span><span class="p">],</span>
+        <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;polarization&#39;</span><span class="p">],</span>
+        <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;phi12&#39;</span><span class="p">],</span>
+        <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;right_ascension&#39;</span><span class="p">],</span>
+        <span class="n">injectionCDFs</span><span class="p">[</span><span class="s1">&#39;sin_declination&#39;</span><span class="p">]</span>
+        <span class="p">])</span>
+
+    <span class="c1"># Evaluate Pdet</span>
+    <span class="n">p_dets</span> <span class="o">=</span> <span class="n">Pdet</span><span class="p">(</span><span class="n">injection_params</span><span class="p">)</span>
+
+    <span class="c1"># Compute total expected detections.</span>
+    <span class="c1"># See Eqs. D6 and D7</span>
+    <span class="n">Nexp</span> <span class="o">=</span> <span class="n">R20</span><span class="o">*</span><span class="p">(</span><span class="n">reference_f_m1_integral</span><span class="o">/</span><span class="n">p_m1_norm</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">reference_f_z_integral</span><span class="o">/</span><span class="n">p_z_norm</span><span class="p">)</span><span class="o">*</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">p_dets</span><span class="o">.</span><span class="n">T</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">inj_z</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">kappa</span><span class="o">-</span><span class="n">inj_kappa</span><span class="p">))</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;rate&quot;</span><span class="p">,</span> <span class="o">-</span><span class="n">Nexp</span><span class="p">)</span>
+
+    <span class="c1"># As a fit diagnostic, compute effective number of injections</span>
+    <span class="n">nEff_inj</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_dets</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p_dets</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">nObs</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">sampleDict</span><span class="p">)</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s2">&quot;nEff_inj_per_event&quot;</span><span class="p">,</span> <span class="n">nEff_inj</span><span class="o">/</span><span class="n">nObs</span><span class="p">)</span>
+    
+    <span class="c1"># This function defines the per-event log-likelihood</span>
+    <span class="k">def</span> <span class="nf">logp</span><span class="p">(</span><span class="n">m1_sample</span><span class="p">,</span> <span class="n">m2_sample</span><span class="p">,</span> <span class="n">z_sample</span><span class="p">,</span> <span class="n">dVdz_sample</span><span class="p">,</span> <span class="n">a1_sample</span><span class="p">,</span> <span class="n">a2_sample</span><span class="p">,</span> <span class="n">cost1_sample</span><span class="p">,</span> <span class="n">cost2_sample</span><span class="p">,</span> <span class="n">priors</span><span class="p">):</span>
+
+        <span class="c1"># Compute proposed population weights</span>
+        <span class="n">p_m1</span> <span class="o">=</span> <span class="n">massModel</span><span class="p">(</span><span class="n">m1_sample</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">mu_m1</span><span class="p">,</span> <span class="n">sig_m1</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_f_peak</span><span class="p">,</span> <span class="n">mMax</span><span class="p">,</span> <span class="n">mMin</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMax</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">log_dmMin</span><span class="p">)</span><span class="o">/</span><span class="n">p_m1_norm</span>
+        <span class="n">p_m2</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">*</span><span class="n">m2_sample</span><span class="o">**</span><span class="n">bq</span><span class="o">/</span><span class="p">(</span><span class="n">m1_sample</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">)</span><span class="o">-</span><span class="n">tmp_min</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">bq</span><span class="p">))</span>
+        <span class="n">p_a1</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a1_sample</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_a2</span> <span class="o">=</span> <span class="n">truncatedNormal</span><span class="p">(</span><span class="n">a2_sample</span><span class="p">,</span> <span class="n">mu_chi</span><span class="p">,</span> <span class="mf">10.</span><span class="o">**</span><span class="n">logsig_chi</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_cost1</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost1_sample</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_cost2</span> <span class="o">=</span> <span class="n">f_iso</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">f_iso</span><span class="p">)</span><span class="o">*</span><span class="n">truncatedNormal</span><span class="p">(</span><span class="n">cost2_sample</span><span class="p">,</span> <span class="n">mu_cost</span><span class="p">,</span> <span class="n">sig_cost</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_z</span> <span class="o">=</span> <span class="n">dVdz_sample</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z_sample</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">kappa</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span><span class="o">/</span><span class="n">p_z_norm</span>
+        <span class="n">R_pop</span> <span class="o">=</span> <span class="n">R20</span><span class="o">*</span><span class="n">p_m1</span><span class="o">*</span><span class="n">p_m2</span><span class="o">*</span><span class="n">p_z</span><span class="o">*</span><span class="n">p_a1</span><span class="o">*</span><span class="n">p_a2</span><span class="o">*</span><span class="n">p_cost1</span><span class="o">*</span><span class="n">p_cost2</span>
+
+        <span class="n">mc_weights</span> <span class="o">=</span> <span class="n">R_pop</span><span class="o">/</span><span class="n">priors</span>
+
+        <span class="c1"># Compute effective number of samples and return log-likelihood</span>
+        <span class="n">n_eff</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mc_weights</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">mc_weights</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>     
+        <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">mc_weights</span><span class="p">)),</span> <span class="n">n_eff</span>
+    
+    <span class="c1"># Map the log-likelihood function over each event in our catalog</span>
+    <span class="n">log_ps</span><span class="p">,</span> <span class="n">n_effs</span> <span class="o">=</span> <span class="n">vmap</span><span class="p">(</span><span class="n">logp</span><span class="p">)(</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;m1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;m2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;z&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;dVc_dz&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;a1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;a2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;cost1&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;cost2&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]),</span>
+                        <span class="n">jnp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sampleDict</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="s1">&#39;z_prior&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">sampleDict</span><span class="p">]))</span>
+        
+    <span class="c1"># As a diagnostic, save minimum number of effective samples across all events</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">deterministic</span><span class="p">(</span><span class="s1">&#39;min_log_neff&#39;</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">n_effs</span><span class="p">)))</span>
+
+    <span class="c1"># Tally log-likelihoods across our catalog</span>
+    <span class="n">numpyro</span><span class="o">.</span><span class="n">factor</span><span class="p">(</span><span class="s2">&quot;logp&quot;</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">log_ps</span><span class="p">))</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
