@@ -3,7 +3,38 @@ Training the network
 
 Here, we describe the workflow followed to train a neural network emulator for the LIGO-Virgo detection probability
 
-Training is accomplished via the script ``code/run_network_training.py``.
+First, you will need to prepare training data.
+The files ``input/endo3_bbhpop-LIGO-T2100113-v12.hdf5``, ``input/endo3_bnspop-LIGO-T2100113-v12.hdf5``, and ``input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5`` contain
+results from pipeline injection campaigns; these were released by the LIGO-Virgo-KAGRA collaborations at https://zenodo.org/records/7890437.
+The files ``data/training_data/rpo3-bbh-certain.hdf`` and ``data/training_data/rpo3-bbh-hopeless.hdf``, meanwhile, contain sets of "certain" and "hopeless" detections (see paper for details), with analogous files for BNS and NSBH events.
+These files will need to be parsed and labeled (with individual events marked as "missed" or "found").
+To do this, run the following
+
+.. code-block:: bash
+
+    $ cd code/
+    $ conda activate learning-p-det
+    $ python format_training_data.py
+
+This script will create the following files:
+
+* ``bbh_training_data.hdf``: Parsed and labeled data from ``input/endo3_bbhpop-LIGO-T2100113-v12.hdf5``    
+* ``bbh_validation_data.hdf``: Parsed and labeled data from ``input/endo3_bbhpop-LIGO-T2100113-v12.hdf5``, reserved for validation purposes.
+* ``rpo3-bbh-certain-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-bbh-certain.hdf``
+* ``rpo3-bbh-hopeless-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-bbh-hopeless.hdf``
+* ``bns_training_data.hdf``: Parsed and labeled data from ``input/endo3_bnspop-LIGO-T2100113-v12.hdf5``    
+* ``bns_validation_data.hdf``: Parsed and labeled data from ``input/endo3_bnspop-LIGO-T2100113-v12.hdf5``, reserved for validation purposes.
+* ``rpo3-bns-certain-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-bns-certain.hdf``
+* ``rpo3-bns-hopeless-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-bns-hopeless.hdf``
+* ``nsbh_training_data.hdf``: Parsed and labeled data from ``input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5``    
+* ``nsbh_validation_data.hdf``: Parsed and labeled data from ``input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5``, reserved for validation purposes.
+* ``rpo3-nsbh-certain-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-nsbh-certain.hdf``
+* ``rpo3-nsbh-hopeless-formatted.hdf``: Parsed and labeled data from ``data/training_data/rpo3-nsbh-hopeless.hdf``
+
+When training, these will themselves be loaded, downsampled, and concatenated via the function ``load_training_data()`` in ``code/utilities.py``
+(although this will be handled automatically and internally when following the rest of the work flow below).
+
+After preparing the above data, training itself is accomplished via the script ``code/run_network_training.py``.
 This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
 It can be run from the command line as follows:
 

@@ -234,29 +234,29 @@ if __name__== "__main__":
 
     # Process real injections
     format_real_injection_data('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5',
-                        './../data/bbh_')
+                        './../data/training_data/bbh_')
     format_real_injection_data('./../input/endo3_bnspop-LIGO-T2100113-v12.hdf5',
-                        './../data/bns_')
+                        './../data/training_data/bns_')
     format_real_injection_data('./../input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5',
-                        './../data/nsbh_')
+                        './../data/training_data/nsbh_')
 
     # Hopeless injections
-    format_and_save_hopeless('./../data/rpo3-bbh-hopeless.hdf',
-                             './../data/rpo3-bbh-hopeless-formatted.hdf',
+    format_and_save_hopeless('./../data/training_data/rpo3-bbh-hopeless.hdf',
+                             './../data/training_data/rpo3-bbh-hopeless-formatted.hdf',
                              'events/table')
-    format_and_save_hopeless('./../data/rpo3-nsbh-hopeless.hdf',
-                             './../data/rpo3-nsbh-hopeless-formatted.hdf',
+    format_and_save_hopeless('./../data/training_data/rpo3-nsbh-hopeless.hdf',
+                             './../data/training_data/rpo3-nsbh-hopeless-formatted.hdf',
                              'events/table')
-    format_and_save_hopeless('./../data/rpo3-bns-hopeless.hdf',
-                             './../data/rpo3-bns-hopeless-formatted.hdf',
+    format_and_save_hopeless('./../data/training_data/rpo3-bns-hopeless.hdf',
+                             './../data/training_data/rpo3-bns-hopeless-formatted.hdf',
                              'events/table')
-    format_and_save_hopeless('./../data/rpo3-combined-hopeless.hdf',
-                             './../data/rpo3-combined-hopeless-formatted.hdf')
+    format_and_save_hopeless('./../data/training_data/rpo3-combined-hopeless.hdf',
+                             './../data/training_data/rpo3-combined-hopeless-formatted.hdf')
 
     # Certain injections
-    format_and_save_certain('./../data/rpo3-bbh-certain.hdf',
-                            './../data/rpo3-bbh-certain-formatted.hdf')
-    format_and_save_certain('./../data/rpo3-nsbh-certain.hdf',
-                            './../data/rpo3-nsbh-certain-formatted.hdf')
-    format_and_save_certain('./../data/rpo3-bns-certain.hdf',
-                            './../data/rpo3-bns-certain-formatted.hdf')
+    format_and_save_certain('./../data/training_data/rpo3-bbh-certain.hdf',
+                            './../data/training_data/rpo3-bbh-certain-formatted.hdf')
+    format_and_save_certain('./../data/training_data/rpo3-nsbh-certain.hdf',
+                            './../data/training_data/rpo3-nsbh-certain-formatted.hdf')
+    format_and_save_certain('./../data/training_data/rpo3-bns-certain.hdf',
+                            './../data/training_data/rpo3-bns-certain-formatted.hdf')

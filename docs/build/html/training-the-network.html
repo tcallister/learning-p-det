@@ -78,7 +78,35 @@
   <section id="training-the-network">
 <h1>Training the network<a class="headerlink" href="#training-the-network" title="Permalink to this heading"></a></h1>
 <p>Here, we describe the workflow followed to train a neural network emulator for the LIGO-Virgo detection probability</p>
-<p>Training is accomplished via the script <code class="docutils literal notranslate"><span class="pre">code/run_network_training.py</span></code>.
+<p>First, you will need to prepare training data.
+The files <code class="docutils literal notranslate"><span class="pre">input/endo3_bbhpop-LIGO-T2100113-v12.hdf5</span></code>, <code class="docutils literal notranslate"><span class="pre">input/endo3_bnspop-LIGO-T2100113-v12.hdf5</span></code>, and <code class="docutils literal notranslate"><span class="pre">input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5</span></code> contain
+results from pipeline injection campaigns; these were released by the LIGO-Virgo-KAGRA collaborations at <a class="reference external" href="https://zenodo.org/records/7890437">https://zenodo.org/records/7890437</a>.
+The files <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bbh-certain.hdf</span></code> and <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bbh-hopeless.hdf</span></code>, meanwhile, contain sets of “certain” and “hopeless” detections (see paper for details), with analogous files for BNS and NSBH events.
+These files will need to be parsed and labeled (with individual events marked as “missed” or “found”).
+To do this, run the following</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>code/
+$<span class="w"> </span>conda<span class="w"> </span>activate<span class="w"> </span>learning-p-det
+$<span class="w"> </span>python<span class="w"> </span>format_training_data.py
+</pre></div>
+</div>
+<p>This script will create the following files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bbh_training_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_bbhpop-LIGO-T2100113-v12.hdf5</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bbh_validation_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_bbhpop-LIGO-T2100113-v12.hdf5</span></code>, reserved for validation purposes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-bbh-certain-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bbh-certain.hdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-bbh-hopeless-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bbh-hopeless.hdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bns_training_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_bnspop-LIGO-T2100113-v12.hdf5</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bns_validation_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_bnspop-LIGO-T2100113-v12.hdf5</span></code>, reserved for validation purposes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-bns-certain-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bns-certain.hdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-bns-hopeless-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-bns-hopeless.hdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nsbh_training_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nsbh_validation_data.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5</span></code>, reserved for validation purposes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-nsbh-certain-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-nsbh-certain.hdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rpo3-nsbh-hopeless-formatted.hdf</span></code>: Parsed and labeled data from <code class="docutils literal notranslate"><span class="pre">data/training_data/rpo3-nsbh-hopeless.hdf</span></code></p></li>
+</ul>
+<p>When training, these will themselves be loaded, downsampled, and concatenated via the function <code class="docutils literal notranslate"><span class="pre">load_training_data()</span></code> in <code class="docutils literal notranslate"><span class="pre">code/utilities.py</span></code>
+(although this will be handled automatically and internally when following the rest of the work flow below).</p>
+<p>After preparing the above data, training itself is accomplished via the script <code class="docutils literal notranslate"><span class="pre">code/run_network_training.py</span></code>.
 This script loads in training data, sets up the necessary tensorflow infrastructure, trains the network, and creates/saves postprocessing and diagnostic info.
 It can be run from the command line as follows:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>code/
