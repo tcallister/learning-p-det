@@ -24,9 +24,9 @@ The second argument is an integer serving as a RNG key.
    Our experience is that the installation of GPU-compatible Tensorflow is highly platform-specific, requiring Tensorflow/CUDA/etc versions
    that depend on your exact computing environment and GPU model.
 
-   As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
-   It is straightforward to do this on a computing cluster with a task management system like Slurm.
-   The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster
+As described in our paper, we train ensembles of networks and select the best-performing network from the batch.
+It is straightforward to do this on a computing cluster with a task management system like Slurm.
+The following, for example, shows the contents of the batch file we use on the UChicago Midway3 cluster
 
 .. code-block:: bash
 

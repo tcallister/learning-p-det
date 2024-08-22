@@ -420,8 +420,8 @@ def get_semianalytic_efficiency(alpha,
     p_m2_semianalytic = (1.+bq)*injs['m2']**bq/(injs['m1']**(1.+bq)-tmp_min**(1.+bq))
     p_a1_semianalytic = truncatedNormal(injs['a1'], mu_chi, 10.**logsig_chi, 0, 1)
     p_a2_semianalytic = truncatedNormal(injs['a2'], mu_chi, 10.**logsig_chi, 0, 1)
-    p_cost1_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['cost1'], mu_cost, sig_cost, -1, 1)
-    p_cost2_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['cost2'], mu_cost, sig_cost, -1, 1)
+    p_cost1_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['costheta1'], mu_cost, sig_cost, -1, 1)
+    p_cost2_semianalytic = f_iso/2. + (1.-f_iso)*truncatedNormal(injs['costheta2'], mu_cost, sig_cost, -1, 1)
     p_z_semianalytic = injs['dVdz']*(1.+injs['z'])**(kappa-1.)/p_z_norm
 
     # Impose boundaries
@@ -437,7 +437,7 @@ def get_semianalytic_efficiency(alpha,
     inj_weights = p_pop_semianalytic/(injs['pdraw']/1.)
 
     # Compute net detection efficiency
-    detection_efficiency = jnp.sum(inj_weights)/semianalytic['nTrials']
+    detection_efficiency = jnp.sum(inj_weights)/injs['nTrials']
     Neff = jnp.sum(inj_weights)**2/jnp.sum(inj_weights**2)
 
     return detection_efficiency, Neff
@@ -563,7 +563,9 @@ def get_nn_efficiency(jitted_ann,
     xi : float
         Predicted detection efficiency
     Neff : float
-        Effective number of detections informing estimated detection efficiency
+        Effective number of samples informing Monte Carlo estimate of detection efficiency
+    Neff_draws : float
+        Effective number of injections when reweighted to target population
     """
 
     # Unpack precomputed CDF values for masses/spins/redshifts, and precomputed
