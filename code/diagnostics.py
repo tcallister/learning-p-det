@@ -7,18 +7,58 @@ from draw_new_injections import gen_found_injections
 import matplotlib.pyplot as plt
 
 
-def ks_test(ann,addDerived,feature_names,input_sc,ndraws,reference_data,population_type,output_prefix,
-            parameters_to_check=None,jitted=False):
+def ks_test(ann, addDerived, feature_names, input_sc, ndraws, reference_data, population_type,
+            output_prefix, parameters_to_check=None, jitted=False):
+
+    """
+    Function used to compute KS test statistic p-values between distributions of found pipeline injections
+    and distributions of detections as predicted by a neural network.
+    Effectively a wrapper of `draw_new_injections.gen_found_injections`.
+    Used in `run_network_training.py` to produce training diagnostics and summary plots.
+
+    Parameters
+    ----------
+    ann : `tf.keras.models.Sequential`
+        Network to be used for prediction
+    addDerived : `func`
+        Function to add any necessary derived features.
+    feature_names : `list`
+        List of feature names expected by network.
+    input_sc : `sklearn.preprocessing.StandardScaler`
+        Preprocessing scaler applied to features before passing to network.
+    ndraws : `int`
+        Number of found events to produce from target population.
+    reference_data : `str`
+        Filepath containing pipeline injections against which to compare
+        neural network predictions.
+    population_type : `str`
+        String specifying population model from which to draw proposed events.
+        See `draw_new_injections.gen_found_injections`.
+    output_prefix : `str`
+        String containing filepath and naming prefix, prepended to saved jpeg files
+    parameters_to_check : `list`
+        List of parameter names, specifies for which parameters KS test will be performed.
+        If None, KS test is performed for all parameters.
+    jitted : `bool`
+        Boolean that tells `draw_new_injections.gen_found_injections` whether or not
+        to expected a jitted function in place of a tensorflow network model.
+
+    Returns
+    -------
+    ks_results : `dict`
+        Dictionary containing KS test statistic p-values and estimated detection efficiencies.
+    """
 
     # Draw new events
-    found_events,nTrials = gen_found_injections(ann,
-                            addDerived,
-                            feature_names,
-                            input_sc,
-                            ndraws,
-                            10000,
-                            pop=population_type,
-                            jitted=jitted)
+    found_events,nTrials = gen_found_injections(
+        ann,
+        addDerived,
+        feature_names,
+        input_sc,
+        ndraws,
+        10000,
+        pop=population_type,
+        jitted=jitted)
 
     # Load reference training data and extract detections
     train_data_all = pd.read_hdf(reference_data)

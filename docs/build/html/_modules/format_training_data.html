@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>format_training_data &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">format_training_data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for format_training_data</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">utilities</span> <span class="kn">import</span> <span class="n">generalized_Xp</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.utils</span> <span class="kn">import</span> <span class="n">shuffle</span>
+
+
+<div class="viewcode-block" id="format_real_injection_data"><a class="viewcode-back" href="../format_training_data.html#format_training_data.format_real_injection_data">[docs]</a><span class="k">def</span> <span class="nf">format_real_injection_data</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">output</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Script to load and prepare LVK O3b CBC injections for use in neural</span>
+<span class="sd">    network training. Specifically, this function adds some derived quantities</span>
+<span class="sd">    and imposes a selection cut to label each injection as &quot;found&quot; or &quot;missed&quot;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    file : `str`</span>
+<span class="sd">        Filepath to hdf file containing injection data</span>
+<span class="sd">    output : `str`</span>
+<span class="sd">        Filepath at which to save pandas.DataFrame with processed injection</span>
+<span class="sd">        information, to be used in neural network training.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Load</span>
+    <span class="n">raw_injection_data</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">raw_injection_data</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;total_generated&#39;</span><span class="p">])</span>
+    <span class="n">injections</span> <span class="o">=</span> <span class="n">raw_injection_data</span><span class="p">[</span><span class="s1">&#39;injections&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Read injection parameters</span>
+    <span class="n">injectionData</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;m1_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;mass1&#39;</span><span class="p">][()],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;m2_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;mass2&#39;</span><span class="p">][()],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;luminosity_distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;distance&#39;</span><span class="p">][()]</span><span class="o">/</span><span class="mf">1000.</span>  <span class="c1"># Convert from Mpc to Gpc</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cos_inclination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;inclination&#39;</span><span class="p">])</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;right_ascension&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;right_ascension&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;declination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;declination&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;polarization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;polarization&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;redshift&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;redshift&#39;</span><span class="p">][()]</span>
+
+    <span class="c1"># Some derived mass parameters</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;q&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;eta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">*</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="o">/</span><span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;chirp_mass_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">eta</span><span class="o">**</span><span class="p">(</span><span class="mf">3.</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;total_mass_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span>
+
+    <span class="c1"># And some derived spin parameters</span>
+    <span class="n">s1x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin1x&#39;</span><span class="p">])</span>
+    <span class="n">s1y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin1y&#39;</span><span class="p">])</span>
+    <span class="n">s1z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin1z&#39;</span><span class="p">])</span>
+    <span class="n">s2x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin2x&#39;</span><span class="p">])</span>
+    <span class="n">s2y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin2y&#39;</span><span class="p">])</span>
+    <span class="n">s2z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">injections</span><span class="p">[</span><span class="s1">&#39;spin2z&#39;</span><span class="p">])</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;a1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s1y</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s1z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;a2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s2x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2y</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cost1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s1z</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">a1</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cost2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s2z</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">a2</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xeff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1z</span> <span class="o">+</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="o">*</span><span class="n">s2z</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xdiff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1z</span> <span class="o">-</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="o">*</span><span class="n">s2z</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xp_gen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">generalized_Xp</span><span class="p">(</span><span class="n">s1x</span><span class="p">,</span> <span class="n">s1y</span><span class="p">,</span> <span class="n">s2x</span><span class="p">,</span>  <span class="n">s2y</span><span class="p">,</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+
+    <span class="c1"># Read out false alarm rates</span>
+    <span class="n">far_gstlal</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;far_gstlal&#39;</span><span class="p">][()]</span>
+    <span class="n">far_pycbc</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;far_pycbc_bbh&#39;</span><span class="p">][()]</span>
+    <span class="n">far_pycbc_hyper</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;far_pycbc_hyperbank&#39;</span><span class="p">][()]</span>
+    <span class="n">far_mbta</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;far_mbta&#39;</span><span class="p">][()]</span>
+    <span class="n">far_cwb</span> <span class="o">=</span> <span class="n">injections</span><span class="p">[</span><span class="s1">&#39;far_cwb&#39;</span><span class="p">][()]</span>
+
+    <span class="c1"># Take minimum FAR across all searches and assign detection labels</span>
+    <span class="n">far_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">far_gstlal</span><span class="p">,</span> <span class="n">far_pycbc</span><span class="p">,</span> <span class="n">far_pycbc_hyper</span><span class="p">,</span> <span class="n">far_mbta</span><span class="p">,</span> <span class="n">far_cwb</span><span class="p">]),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;detected&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">far_min</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">injectionData</span> <span class="o">=</span> <span class="n">shuffle</span><span class="p">(</span><span class="n">injectionData</span><span class="p">)</span>
+    <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">injectionData</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+
+    <span class="n">train_data</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">output</span><span class="o">+</span><span class="s1">&#39;training_data.hdf&#39;</span><span class="p">,</span> <span class="s1">&#39;train&#39;</span><span class="p">)</span>
+    <span class="n">val_data</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">output</span><span class="o">+</span><span class="s1">&#39;validation_data.hdf&#39;</span><span class="p">,</span> <span class="s1">&#39;validate&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="read_and_annotate"><a class="viewcode-back" href="../format_training_data.html#format_training_data.read_and_annotate">[docs]</a><span class="k">def</span> <span class="nf">read_and_annotate</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">hkey</span><span class="o">=</span><span class="s1">&#39;events&#39;</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to load hdf file prepared by the `gwdistributions` and add</span>
+<span class="sd">    necessary derived data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hfile : `h5py.File`</span>
+<span class="sd">        Opened `h5py.File` containing injection data</span>
+<span class="sd">    hkey : `str`</span>
+<span class="sd">        Name of relevant dataset inside hdf object. Default `events`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    injectionData : `pandas.DataFrame`</span>
+<span class="sd">        Data frame containing injection data and additional derived parameters</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Read out dataset to be processed</span>
+    <span class="n">raw_data</span> <span class="o">=</span> <span class="n">hfile</span><span class="p">[</span><span class="n">hkey</span><span class="p">]</span>
+
+    <span class="c1"># Read injection parameters</span>
+    <span class="n">injectionData</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;m1_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;mass1_detector&#39;</span><span class="p">][()],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;m2_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;mass2_detector&#39;</span><span class="p">][()],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;luminosity_distance&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;luminosity_distance&#39;</span><span class="p">][()]</span><span class="o">/</span><span class="mf">1000.</span>  <span class="c1"># Convert from Mpc to Gpc</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cos_inclination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;inclination&#39;</span><span class="p">])</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;right_ascension&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;right_ascension&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;declination&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;declination&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;polarization&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;polarization&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;redshift&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">][()]</span>
+
+    <span class="c1"># Some derived mass parameters</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;q&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;eta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">*</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="o">/</span><span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;chirp_mass_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">eta</span><span class="o">**</span><span class="p">(</span><span class="mf">3.</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;total_mass_detector&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m1_detector</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">m2_detector</span><span class="p">)</span>
+
+    <span class="c1"># And some derived spin parameters</span>
+    <span class="n">s1x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin1x&#39;</span><span class="p">])</span>
+    <span class="n">s1y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin1y&#39;</span><span class="p">])</span>
+    <span class="n">s1z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin1z&#39;</span><span class="p">])</span>
+    <span class="n">s2x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin2x&#39;</span><span class="p">])</span>
+    <span class="n">s2y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin2y&#39;</span><span class="p">])</span>
+    <span class="n">s2z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;spin2z&#39;</span><span class="p">])</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;a1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s1y</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s1z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;a2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s2x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2y</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">s2z</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cost1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s1z</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">a1</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;cost2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">s2z</span><span class="o">/</span><span class="n">injectionData</span><span class="o">.</span><span class="n">a2</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xeff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1z</span> <span class="o">+</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="o">*</span><span class="n">s2z</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xdiff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1z</span> <span class="o">-</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="o">*</span><span class="n">s2z</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;Xp_gen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">generalized_Xp</span><span class="p">(</span><span class="n">s1x</span><span class="p">,</span> <span class="n">s1y</span><span class="p">,</span> <span class="n">s2x</span><span class="p">,</span> <span class="n">s2y</span><span class="p">,</span> <span class="n">injectionData</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
+
+    <span class="c1"># SNR info</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;snr_net&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;snr_net&#39;</span><span class="p">]</span>
+    <span class="n">injectionData</span><span class="p">[</span><span class="s1">&#39;observed_snr_net&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;observed_snr_net&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">injectionData</span></div>
+
+
+<div class="viewcode-block" id="mark_detections_certain"><a class="viewcode-back" href="../format_training_data.html#format_training_data.mark_detections_certain">[docs]</a><span class="k">def</span> <span class="nf">mark_detections_certain</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">injectionData</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple helper script to annotate certain detections as found/missed</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hfile : `str`</span>
+<span class="sd">        Filepath to hdf file produced by `gwdistributions` containing certain</span>
+<span class="sd">        injections.</span>
+<span class="sd">    injectionData : `pandas.DataFrame`</span>
+<span class="sd">        Data frame object returned by `read_and_annotate()`. Annotated</span>
+<span class="sd">        in-place.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Probabalitically determine if H1 and L1 were on/off</span>
+    <span class="n">both_off</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">injectionData</span><span class="p">))</span> <span class="o">&lt;</span> <span class="mf">0.0589</span>
+
+    <span class="c1"># If both H1 and L1 are off, mark detection as missed</span>
+    <span class="n">injectionData</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;detected&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">both_off</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="mark_detections_hopeless"><a class="viewcode-back" href="../format_training_data.html#format_training_data.mark_detections_hopeless">[docs]</a><span class="k">def</span> <span class="nf">mark_detections_hopeless</span><span class="p">(</span><span class="n">injectionData</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple helper script to mark all injections in a given dataset as missed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    injectionData : `pandas.DataFrame`</span>
+<span class="sd">        Data frame object returned by `read_and_annotate()`.</span>
+<span class="sd">        Annotated in-place with detections marked as missed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Mark as missed</span>
+    <span class="n">injectionData</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;detected&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="format_and_save_certain"><a class="viewcode-back" href="../format_training_data.html#format_training_data.format_and_save_certain">[docs]</a><span class="k">def</span> <span class="nf">format_and_save_certain</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">output</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper function to read, format, and save certain training datasets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hfile : `str`</span>
+<span class="sd">        Filepath to hdf file produced by `gwdistributions` containing certain</span>
+<span class="sd">        injections</span>
+<span class="sd">    output : `str`</span>
+<span class="sd">        Filepath at which to save reformatted and annotated data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Open</span>
+    <span class="n">hfile</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Add derived parameters and mark as found/missed</span>
+    <span class="n">certain</span> <span class="o">=</span> <span class="n">read_and_annotate</span><span class="p">(</span><span class="n">hfile</span><span class="p">)</span>
+    <span class="n">mark_detections_certain</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">certain</span><span class="p">)</span>
+
+    <span class="c1"># Shuffle and save</span>
+    <span class="n">certain</span> <span class="o">=</span> <span class="n">shuffle</span><span class="p">(</span><span class="n">certain</span><span class="p">)</span>
+    <span class="n">certain</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;train&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="format_and_save_hopeless"><a class="viewcode-back" href="../format_training_data.html#format_training_data.format_and_save_hopeless">[docs]</a><span class="k">def</span> <span class="nf">format_and_save_hopeless</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">hkey</span><span class="o">=</span><span class="s1">&#39;events&#39;</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper function to read, format, and save hopeless training datasets.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    hfile : `str`</span>
+<span class="sd">        Filepath to hdf file produced by `gwdistributions` containing hopeless</span>
+<span class="sd">        injections</span>
+<span class="sd">    output : `str`</span>
+<span class="sd">        Filepath at which to save reformatted and annotated data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Open</span>
+    <span class="n">hfile</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Add derived parameters and mark as missed injections</span>
+    <span class="n">hopeless</span> <span class="o">=</span> <span class="n">read_and_annotate</span><span class="p">(</span><span class="n">hfile</span><span class="p">,</span> <span class="n">hkey</span><span class="p">)</span>
+    <span class="n">mark_detections_hopeless</span><span class="p">(</span><span class="n">hopeless</span><span class="p">)</span>
+
+    <span class="c1"># Shuffle and save</span>
+    <span class="n">hopeless</span> <span class="o">=</span> <span class="n">shuffle</span><span class="p">(</span><span class="n">hopeless</span><span class="p">)</span>
+    <span class="n">hopeless</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="n">output</span><span class="p">,</span>
+                    <span class="s1">&#39;train&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="c1"># Process real injections</span>
+    <span class="n">format_real_injection_data</span><span class="p">(</span><span class="s1">&#39;./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;./../data/training_data/bbh_&#39;</span><span class="p">)</span>
+    <span class="n">format_real_injection_data</span><span class="p">(</span><span class="s1">&#39;./../input/endo3_bnspop-LIGO-T2100113-v12.hdf5&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;./../data/training_data/bns_&#39;</span><span class="p">)</span>
+    <span class="n">format_real_injection_data</span><span class="p">(</span><span class="s1">&#39;./../input/endo3_nsbhpop-LIGO-T2100113-v12.hdf5&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;./../data/training_data/nsbh_&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Hopeless injections</span>
+    <span class="n">format_and_save_hopeless</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-bbh-hopeless.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;./../data/training_data/rpo3-bbh-hopeless-formatted.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;events/table&#39;</span><span class="p">)</span>
+    <span class="n">format_and_save_hopeless</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-nsbh-hopeless.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;./../data/training_data/rpo3-nsbh-hopeless-formatted.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;events/table&#39;</span><span class="p">)</span>
+    <span class="n">format_and_save_hopeless</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-bns-hopeless.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;./../data/training_data/rpo3-bns-hopeless-formatted.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;events/table&#39;</span><span class="p">)</span>
+    <span class="n">format_and_save_hopeless</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-combined-hopeless.hdf&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;./../data/training_data/rpo3-combined-hopeless-formatted.hdf&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Certain injections</span>
+    <span class="n">format_and_save_certain</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-bbh-certain.hdf&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;./../data/training_data/rpo3-bbh-certain-formatted.hdf&#39;</span><span class="p">)</span>
+    <span class="n">format_and_save_certain</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-nsbh-certain.hdf&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;./../data/training_data/rpo3-nsbh-certain-formatted.hdf&#39;</span><span class="p">)</span>
+    <span class="n">format_and_save_certain</span><span class="p">(</span><span class="s1">&#39;./../data/training_data/rpo3-bns-certain.hdf&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;./../data/training_data/rpo3-bns-certain-formatted.hdf&#39;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

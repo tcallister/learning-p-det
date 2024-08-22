@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>format_training_data module &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="draw_new_injections module" href="draw_new_injections.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">diagnostics module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="draw_new_injections.html">draw_new_injections module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">format_training_data module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.format_and_save_certain"><code class="docutils literal notranslate"><span class="pre">format_and_save_certain()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.format_and_save_hopeless"><code class="docutils literal notranslate"><span class="pre">format_and_save_hopeless()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.format_real_injection_data"><code class="docutils literal notranslate"><span class="pre">format_real_injection_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.mark_detections_certain"><code class="docutils literal notranslate"><span class="pre">mark_detections_certain()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.mark_detections_hopeless"><code class="docutils literal notranslate"><span class="pre">mark_detections_hopeless()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#format_training_data.read_and_annotate"><code class="docutils literal notranslate"><span class="pre">read_and_annotate()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Modules</a></li>
+      <li class="breadcrumb-item active">format_training_data module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/format_training_data.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-format_training_data">
+<span id="format-training-data-module"></span><h1>format_training_data module<a class="headerlink" href="#module-format_training_data" title="Permalink to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.format_and_save_certain">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">format_and_save_certain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#format_and_save_certain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.format_and_save_certain" title="Permalink to this definition"></a></dt>
+<dd><p>Wrapper function to read, format, and save certain training datasets.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>hfile</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath to hdf file produced by <cite>gwdistributions</cite> containing certain
+injections</p>
+</dd>
+<dt><strong>output</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath at which to save reformatted and annotated data</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.format_and_save_hopeless">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">format_and_save_hopeless</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'events'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#format_and_save_hopeless"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.format_and_save_hopeless" title="Permalink to this definition"></a></dt>
+<dd><p>Wrapper function to read, format, and save hopeless training datasets.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>hfile</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath to hdf file produced by <cite>gwdistributions</cite> containing hopeless
+injections</p>
+</dd>
+<dt><strong>output</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath at which to save reformatted and annotated data</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.format_real_injection_data">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">format_real_injection_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#format_real_injection_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.format_real_injection_data" title="Permalink to this definition"></a></dt>
+<dd><p>Script to load and prepare LVK O3b CBC injections for use in neural
+network training. Specifically, this function adds some derived quantities
+and imposes a selection cut to label each injection as “found” or “missed”</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>file</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath to hdf file containing injection data</p>
+</dd>
+<dt><strong>output</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath at which to save pandas.DataFrame with processed injection
+information, to be used in neural network training.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.mark_detections_certain">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">mark_detections_certain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">injectionData</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#mark_detections_certain"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.mark_detections_certain" title="Permalink to this definition"></a></dt>
+<dd><p>Simple helper script to annotate certain detections as found/missed</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>hfile</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Filepath to hdf file produced by <cite>gwdistributions</cite> containing certain
+injections.</p>
+</dd>
+<dt><strong>injectionData</strong><span class="classifier"><cite>pandas.DataFrame</cite></span></dt><dd><p>Data frame object returned by <cite>read_and_annotate()</cite>. Annotated
+in-place.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.mark_detections_hopeless">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">mark_detections_hopeless</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">injectionData</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#mark_detections_hopeless"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.mark_detections_hopeless" title="Permalink to this definition"></a></dt>
+<dd><p>Simple helper script to mark all injections in a given dataset as missed.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>injectionData</strong><span class="classifier"><cite>pandas.DataFrame</cite></span></dt><dd><p>Data frame object returned by <cite>read_and_annotate()</cite>.
+Annotated in-place with detections marked as missed.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="format_training_data.read_and_annotate">
+<span class="sig-prename descclassname"><span class="pre">format_training_data.</span></span><span class="sig-name descname"><span class="pre">read_and_annotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hfile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'events'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/format_training_data.html#read_and_annotate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#format_training_data.read_and_annotate" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to load hdf file prepared by the <cite>gwdistributions</cite> and add
+necessary derived data.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>hfile</strong><span class="classifier"><cite>h5py.File</cite></span></dt><dd><p>Opened <cite>h5py.File</cite> containing injection data</p>
+</dd>
+<dt><strong>hkey</strong><span class="classifier"><cite>str</cite></span></dt><dd><p>Name of relevant dataset inside hdf object. Default <cite>events</cite></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>injectionData</strong><span class="classifier"><cite>pandas.DataFrame</cite></span></dt><dd><p>Data frame containing injection data and additional derived parameters</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="draw_new_injections.html" class="btn btn-neutral float-left" title="draw_new_injections module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
