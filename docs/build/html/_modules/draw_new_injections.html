@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>draw_new_injections &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">draw_new_injections</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for draw_new_injections</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">astropy.cosmology</span> <span class="kn">import</span> <span class="n">Planck15</span>
+<span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">utilities</span> <span class="kn">import</span> <span class="n">generalized_Xp</span>
+
+
+<div class="viewcode-block" id="draw_new_injections"><a class="viewcode-back" href="../draw_new_injections.html#draw_new_injections.draw_new_injections">[docs]</a><span class="k">def</span> <span class="nf">draw_new_injections</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+                        <span class="n">min_m1</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span>
+                        <span class="n">max_m1</span><span class="o">=</span><span class="mf">100.</span><span class="p">,</span>
+                        <span class="n">alpha_m1</span><span class="o">=-</span><span class="mf">2.35</span><span class="p">,</span>
+                        <span class="n">min_m2</span><span class="o">=</span><span class="mf">2.</span><span class="p">,</span>
+                        <span class="n">max_m2</span><span class="o">=</span><span class="mf">100.</span><span class="p">,</span>
+                        <span class="n">alpha_m2</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                        <span class="n">max_a1</span><span class="o">=</span><span class="mf">0.998</span><span class="p">,</span>
+                        <span class="n">max_a2</span><span class="o">=</span><span class="mf">0.998</span><span class="p">,</span>
+                        <span class="n">zMax</span><span class="o">=</span><span class="mf">1.9</span><span class="p">,</span>
+                        <span class="n">kappa</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span>
+                        <span class="n">conditional_mass</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to draw new proposed injection parameters. Note that O3b</span>
+<span class="sd">    injection distributions are described at: https://zenodo.org/record/5546676</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_m1 : `float`</span>
+<span class="sd">        Minimum source-frame primary mass</span>
+<span class="sd">    max_m1 : `float`</span>
+<span class="sd">        Maximum source-frame primary mass</span>
+<span class="sd">    alpha_m1 : `float`</span>
+<span class="sd">        Power-law index on primary mass distribution</span>
+<span class="sd">    min_m2 : `float`</span>
+<span class="sd">        Minimum source-frame secondary mass</span>
+<span class="sd">    max_m2 : `float`</span>
+<span class="sd">        Maximum source-frame secondary mass</span>
+<span class="sd">    alpha_m2 : `float`</span>
+<span class="sd">        Power-law index on secondary mass distribution</span>
+<span class="sd">    max_a1 : `float`</span>
+<span class="sd">        Maximum spin magnitude on primary</span>
+<span class="sd">    max_m2 : `float`</span>
+<span class="sd">        Maximum spin magnitude on secondary</span>
+<span class="sd">    zMax : `float`</span>
+<span class="sd">        Maximum redshift</span>
+<span class="sd">    kappa : `float`</span>
+<span class="sd">        Power-law index governing evolution of the merger rate with redshift</span>
+<span class="sd">    conditional_mass : `bool`</span>
+<span class="sd">        If `True`, secondary mass distribution is normalized on the range</span>
+<span class="sd">        `(min_m2,m1)`, following the convention adopted for the BBH</span>
+<span class="sd">        distribution in O3b. If `False`, normalized on `(min_m2,max_m2)` and</span>
+<span class="sd">        results are rejection sampled to enforce `m2&lt;m1`, following the</span>
+<span class="sd">        convention for BNS and NSBH distributions in O3. Default `False`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    draws : `pandas.DataFrame`</span>
+<span class="sd">        Dictionary containing randomly drawn component masses, Cartesian spins,</span>
+<span class="sd">        sky position, source orientation, distance, and time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Draw random cumulants in the m1 and m2 distribution and use the inverse</span>
+    <span class="c1"># CDF to translate into m1 and m2 values</span>
+    <span class="n">cs_m1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">cs_m2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="p">(</span><span class="n">min_m1</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m1</span><span class="p">)</span> <span class="o">+</span> <span class="n">cs_m1</span><span class="o">*</span><span class="p">(</span><span class="n">max_m1</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m1</span><span class="p">)</span><span class="o">-</span><span class="n">min_m1</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m1</span><span class="p">)))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m1</span><span class="p">))</span>
+
+    <span class="c1"># Draw secondary mass, either independently of or conditioned on the</span>
+    <span class="c1"># drawn value of primary mass</span>
+    <span class="k">if</span> <span class="n">conditional_mass</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">min_m2</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)</span> <span class="o">+</span> <span class="n">cs_m2</span><span class="o">*</span><span class="p">(</span><span class="n">m1</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)</span><span class="o">-</span><span class="n">min_m2</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">m2</span> <span class="o">=</span> <span class="p">(</span><span class="n">min_m2</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)</span> <span class="o">+</span> <span class="n">cs_m2</span><span class="o">*</span><span class="p">(</span><span class="n">max_m2</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)</span><span class="o">-</span><span class="n">min_m2</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">)))</span><span class="o">**</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">alpha_m2</span><span class="p">))</span>
+
+    <span class="c1"># Random isotropic spins</span>
+    <span class="n">a1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">max_a1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">a2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">max_a2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">cost1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">1.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">cost2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">1.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">phi1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">phi2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+
+    <span class="c1"># Manually construct CDF of redshift distribution</span>
+    <span class="n">z_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">zMax</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+    <span class="n">dVdz_grid</span> <span class="o">=</span> <span class="mf">4.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">Planck15</span><span class="o">.</span><span class="n">differential_comoving_volume</span><span class="p">(</span><span class="n">z_grid</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">Gpc</span><span class="o">**</span><span class="mi">3</span><span class="o">/</span><span class="n">u</span><span class="o">.</span><span class="n">sr</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">p_z_grid</span> <span class="o">=</span> <span class="n">dVdz_grid</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z_grid</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">kappa</span><span class="o">-</span><span class="mf">1.</span><span class="p">)</span>
+    <span class="n">c_z_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">p_z_grid</span><span class="p">)</span>
+    <span class="n">c_z_grid</span> <span class="o">/=</span> <span class="n">c_z_grid</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Draw random cumulant, inverse to obtain a redshift, and compute</span>
+    <span class="c1"># luminosity distance</span>
+    <span class="n">cs_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">cs_z</span><span class="p">,</span> <span class="n">c_z_grid</span><span class="p">,</span> <span class="n">z_grid</span><span class="p">)</span>
+    <span class="n">DL</span> <span class="o">=</span> <span class="n">Planck15</span><span class="o">.</span><span class="n">luminosity_distance</span><span class="p">(</span><span class="n">z</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">Gpc</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="c1"># Isotropic sky position and orientation</span>
+    <span class="n">cos_inc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">1.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">2.</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+    <span class="n">dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arcsin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">1.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">))</span>
+    <span class="n">pol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+
+    <span class="c1"># Derive mass parameters</span>
+    <span class="n">m1_det</span> <span class="o">=</span> <span class="n">m1</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z</span><span class="p">)</span>
+    <span class="n">m2_det</span> <span class="o">=</span> <span class="n">m2</span><span class="o">*</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">z</span><span class="p">)</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">m2_det</span><span class="o">/</span><span class="n">m1_det</span>
+    <span class="n">eta</span> <span class="o">=</span> <span class="n">q</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">q</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">Mtot_det</span> <span class="o">=</span> <span class="n">m1_det</span><span class="o">+</span><span class="n">m2_det</span>
+    <span class="n">Mc_det</span> <span class="o">=</span> <span class="n">Mtot_det</span><span class="o">*</span><span class="n">eta</span><span class="o">**</span><span class="p">(</span><span class="mf">3.</span><span class="o">/</span><span class="mf">5.</span><span class="p">)</span>
+    <span class="n">Xeff</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span><span class="o">*</span><span class="n">cost1</span> <span class="o">+</span> <span class="n">q</span><span class="o">*</span><span class="n">a2</span><span class="o">*</span><span class="n">cost2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">Xdiff</span> <span class="o">=</span> <span class="p">(</span><span class="n">a1</span><span class="o">*</span><span class="n">cost1</span> <span class="o">-</span> <span class="n">q</span><span class="o">*</span><span class="n">a2</span><span class="o">*</span><span class="n">cost2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">1.</span><span class="o">+</span><span class="n">q</span><span class="p">)</span>
+    <span class="n">sint1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">cost1</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">sint2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">cost2</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">Xp_gen</span> <span class="o">=</span> <span class="n">generalized_Xp</span><span class="p">(</span><span class="n">a1</span><span class="o">*</span><span class="n">sint1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi1</span><span class="p">),</span> <span class="n">a1</span><span class="o">*</span><span class="n">sint1</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi1</span><span class="p">),</span>
+                            <span class="n">a2</span><span class="o">*</span><span class="n">sint2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">phi2</span><span class="p">),</span> <span class="n">a2</span><span class="o">*</span><span class="n">sint2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phi2</span><span class="p">),</span>
+                            <span class="n">q</span><span class="p">)</span>
+
+    <span class="c1"># Record and return</span>
+    <span class="n">draws</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s1">&#39;m1_source&#39;</span><span class="p">:</span> <span class="n">m1</span><span class="p">,</span>
+                          <span class="s1">&#39;m2_source&#39;</span><span class="p">:</span> <span class="n">m2</span><span class="p">,</span>
+                          <span class="s1">&#39;m1_detector&#39;</span><span class="p">:</span> <span class="n">m1_det</span><span class="p">,</span>
+                          <span class="s1">&#39;m2_detector&#39;</span><span class="p">:</span> <span class="n">m2_det</span><span class="p">,</span>
+                          <span class="s1">&#39;chirp_mass_detector&#39;</span><span class="p">:</span> <span class="n">Mc_det</span><span class="p">,</span>
+                          <span class="s1">&#39;total_mass_detector&#39;</span><span class="p">:</span> <span class="n">Mtot_det</span><span class="p">,</span>
+                          <span class="s1">&#39;q&#39;</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span>
+                          <span class="s1">&#39;eta&#39;</span><span class="p">:</span> <span class="n">eta</span><span class="p">,</span>
+                          <span class="s1">&#39;a1&#39;</span><span class="p">:</span> <span class="n">a1</span><span class="p">,</span>
+                          <span class="s1">&#39;a2&#39;</span><span class="p">:</span> <span class="n">a2</span><span class="p">,</span>
+                          <span class="s1">&#39;cost1&#39;</span><span class="p">:</span> <span class="n">cost1</span><span class="p">,</span>
+                          <span class="s1">&#39;cost2&#39;</span><span class="p">:</span> <span class="n">cost2</span><span class="p">,</span>
+                          <span class="s1">&#39;Xeff&#39;</span><span class="p">:</span> <span class="n">Xeff</span><span class="p">,</span>
+                          <span class="s1">&#39;Xdiff&#39;</span><span class="p">:</span> <span class="n">Xdiff</span><span class="p">,</span>
+                          <span class="s1">&#39;Xp_gen&#39;</span><span class="p">:</span> <span class="n">Xp_gen</span><span class="p">,</span>
+                          <span class="s1">&#39;phi1&#39;</span><span class="p">:</span> <span class="n">phi1</span><span class="p">,</span>
+                          <span class="s1">&#39;phi2&#39;</span><span class="p">:</span> <span class="n">phi2</span><span class="p">,</span>
+                          <span class="s1">&#39;redshift&#39;</span><span class="p">:</span> <span class="n">z</span><span class="p">,</span>
+                          <span class="s1">&#39;luminosity_distance&#39;</span><span class="p">:</span> <span class="n">DL</span><span class="p">,</span>
+                          <span class="s1">&#39;cos_inclination&#39;</span><span class="p">:</span> <span class="n">cos_inc</span><span class="p">,</span>
+                          <span class="s1">&#39;right_ascension&#39;</span><span class="p">:</span> <span class="n">ra</span><span class="p">,</span>
+                          <span class="s1">&#39;declination&#39;</span><span class="p">:</span> <span class="n">dec</span><span class="p">,</span>
+                          <span class="s1">&#39;polarization&#39;</span><span class="p">:</span> <span class="n">pol</span><span class="p">})</span>
+
+    <span class="c1"># If we have not already conditioned on primary mass, reject all draws</span>
+    <span class="c1"># with m2&gt;m1</span>
+    <span class="k">if</span> <span class="n">conditional_mass</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">draws</span> <span class="o">=</span> <span class="n">draws</span><span class="p">[</span><span class="n">draws</span><span class="o">.</span><span class="n">m1_source</span> <span class="o">&gt;</span> <span class="n">draws</span><span class="o">.</span><span class="n">m2_source</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">draws</span></div>
+
+
+<div class="viewcode-block" id="gen_found_injections"><a class="viewcode-back" href="../draw_new_injections.html#draw_new_injections.gen_found_injections">[docs]</a><span class="k">def</span> <span class="nf">gen_found_injections</span><span class="p">(</span><span class="n">p_det_emulator</span><span class="p">,</span> <span class="n">addDerived_func</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">,</span>
+                         <span class="n">scaler</span><span class="p">,</span> <span class="n">ntotal</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">pop</span><span class="o">=</span><span class="s1">&#39;BBH&#39;</span><span class="p">,</span>
+                         <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">jitted</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates new sets of &quot;found&quot; injections drawn from the O3b CBC injected</span>
+<span class="sd">    distributions, labeled according to our neural network P_det emulator.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_det_emulator : `tf.keras.models.Sequential` or `ANNaverage`</span>
+<span class="sd">        The network (or list of networks) to be used for prediction</span>
+<span class="sd">    addDerived_func : `func`</span>
+<span class="sd">        Function serving to add any additional required derived parameters to</span>
+<span class="sd">        the DataFrame returned by `draw_new_injections`. Should modify the</span>
+<span class="sd">        DataFrame in-place.</span>
+<span class="sd">    feature_names : `list`</span>
+<span class="sd">        List of feature names expected by `p_det_emulator`. Should correspond</span>
+<span class="sd">        to columns of DataFrame natively returned by `draw_new_injections` or</span>
+<span class="sd">        added by `addDerived_func`</span>
+<span class="sd">    scaler : `sklearn.preprocessing.StandardScaler` or `sklearn.preprocessing.QuantileTransformer`</span>
+<span class="sd">        Preprocessing scaler applied to features extracted from DataFrame.</span>
+<span class="sd">    ntotal : `int`</span>
+<span class="sd">        The total number of requested found injections</span>
+<span class="sd">    batch_size : `int`</span>
+<span class="sd">        Size of individual batches in which proposed injections will be drawn</span>
+<span class="sd">        and evaluated (default 1000)</span>
+<span class="sd">    pop : `string` or `dict`</span>
+<span class="sd">        If `BBH`, `BNS`, or `NSBH`, injections will be drawn following the</span>
+<span class="sd">        distributions adopted for each source class in O3b, documented at</span>
+<span class="sd">        https://zenodo.org/record/5546676. If a dictionary, injections will be</span>
+<span class="sd">        drawn according to user-specified parameters</span>
+<span class="sd">    verbose : `bool`</span>
+<span class="sd">        If `True`, additional information will be printed to screen.</span>
+<span class="sd">        Default `False`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    all_found : `pandas.DataFrame`</span>
+<span class="sd">        Set of new injections labeled as &quot;found&quot;</span>
+<span class="sd">    nTrials : `int`</span>
+<span class="sd">        Total number of injections drawn in order to yield the set `all_found`</span>
+<span class="sd">        of found injections</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Loop until we have the desired number of found injections</span>
+    <span class="n">nfound</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nTrials</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">min_pdet</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">nfound</span> <span class="o">&lt;=</span> <span class="n">ntotal</span><span class="p">:</span>
+
+        <span class="c1"># User specified parameters, if population is passed as a dict</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">pop</span><span class="p">)</span> <span class="o">==</span> <span class="nb">dict</span><span class="p">:</span>
+            <span class="n">min_m1</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;min_m1&#39;</span><span class="p">]</span>
+            <span class="n">max_m1</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;max_m1&#39;</span><span class="p">]</span>
+            <span class="n">alpha_m1</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;alpha_m1&#39;</span><span class="p">]</span>
+            <span class="n">min_m2</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;min_m2&#39;</span><span class="p">]</span>
+            <span class="n">max_m2</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;max_m2&#39;</span><span class="p">]</span>
+            <span class="n">alpha_m2</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;alpha_m2&#39;</span><span class="p">]</span>
+            <span class="n">max_a1</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;max_a1&#39;</span><span class="p">]</span>
+            <span class="n">max_a2</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;max_a2&#39;</span><span class="p">]</span>
+            <span class="n">zMax</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;zMax&#39;</span><span class="p">]</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;kappa&#39;</span><span class="p">]</span>
+            <span class="n">conditional_mass</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="s1">&#39;conditional_mass&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Otherwise select params based on specified string</span>
+        <span class="k">elif</span> <span class="n">pop</span> <span class="o">==</span> <span class="s1">&#39;BBH&#39;</span><span class="p">:</span>
+
+            <span class="c1"># BBH params</span>
+            <span class="n">min_m1</span> <span class="o">=</span> <span class="mf">2.</span>
+            <span class="n">max_m1</span> <span class="o">=</span> <span class="mf">100.</span>
+            <span class="n">alpha_m1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.35</span>
+            <span class="n">min_m2</span> <span class="o">=</span> <span class="mf">2.</span>
+            <span class="n">max_m2</span> <span class="o">=</span> <span class="mf">100.</span>
+            <span class="n">alpha_m2</span> <span class="o">=</span> <span class="mf">1.</span>
+            <span class="n">max_a1</span> <span class="o">=</span> <span class="mf">0.998</span>
+            <span class="n">max_a2</span> <span class="o">=</span> <span class="mf">0.998</span>
+            <span class="n">zMax</span> <span class="o">=</span> <span class="mf">1.9</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="mf">1.</span>
+            <span class="n">conditional_mass</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">elif</span> <span class="n">pop</span> <span class="o">==</span> <span class="s1">&#39;NSBH&#39;</span><span class="p">:</span>
+
+            <span class="c1"># NSBH params</span>
+            <span class="n">min_m1</span> <span class="o">=</span> <span class="mf">2.5</span>
+            <span class="n">max_m1</span> <span class="o">=</span> <span class="mf">60.</span>
+            <span class="n">alpha_m1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.35</span>
+            <span class="n">min_m2</span> <span class="o">=</span> <span class="mf">1.</span>
+            <span class="n">max_m2</span> <span class="o">=</span> <span class="mf">2.5</span>
+            <span class="n">alpha_m2</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">max_a1</span> <span class="o">=</span> <span class="mf">0.998</span>
+            <span class="n">max_a2</span> <span class="o">=</span> <span class="mf">0.4</span>
+            <span class="n">zMax</span> <span class="o">=</span> <span class="mf">0.25</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">conditional_mass</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">elif</span> <span class="n">pop</span> <span class="o">==</span> <span class="s1">&#39;BNS&#39;</span><span class="p">:</span>
+
+            <span class="c1"># BNS params</span>
+            <span class="n">min_m1</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">max_m1</span> <span class="o">=</span> <span class="mf">2.5</span>
+            <span class="n">alpha_m1</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">min_m2</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="n">max_m2</span> <span class="o">=</span> <span class="mf">2.5</span>
+            <span class="n">alpha_m2</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">max_a1</span> <span class="o">=</span> <span class="mf">0.4</span>
+            <span class="n">max_a2</span> <span class="o">=</span> <span class="mf">0.4</span>
+            <span class="n">zMax</span> <span class="o">=</span> <span class="mf">0.15</span>
+            <span class="n">kappa</span> <span class="o">=</span> <span class="mf">0.</span>
+            <span class="n">conditional_mass</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Take draws</span>
+        <span class="n">new_draws</span> <span class="o">=</span> <span class="n">draw_new_injections</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+                                        <span class="n">min_m1</span><span class="o">=</span><span class="n">min_m1</span><span class="p">,</span>
+                                        <span class="n">max_m1</span><span class="o">=</span><span class="n">max_m1</span><span class="p">,</span>
+                                        <span class="n">alpha_m1</span><span class="o">=</span><span class="n">alpha_m1</span><span class="p">,</span>
+                                        <span class="n">min_m2</span><span class="o">=</span><span class="n">min_m2</span><span class="p">,</span>
+                                        <span class="n">max_m2</span><span class="o">=</span><span class="n">max_m2</span><span class="p">,</span>
+                                        <span class="n">alpha_m2</span><span class="o">=</span><span class="n">alpha_m2</span><span class="p">,</span>
+                                        <span class="n">max_a1</span><span class="o">=</span><span class="n">max_a1</span><span class="p">,</span>
+                                        <span class="n">max_a2</span><span class="o">=</span><span class="n">max_a2</span><span class="p">,</span>
+                                        <span class="n">zMax</span><span class="o">=</span><span class="n">zMax</span><span class="p">,</span>
+                                        <span class="n">kappa</span><span class="o">=</span><span class="n">kappa</span><span class="p">,</span>
+                                        <span class="n">conditional_mass</span><span class="o">=</span><span class="n">conditional_mass</span><span class="p">)</span>
+
+        <span class="n">addDerived_func</span><span class="p">(</span><span class="n">new_draws</span><span class="p">)</span>
+        <span class="n">new_draws_features</span> <span class="o">=</span> <span class="n">new_draws</span><span class="p">[</span><span class="n">feature_names</span><span class="p">]</span>
+
+        <span class="c1"># Transform to the expected parameter space</span>
+        <span class="k">if</span> <span class="n">scaler</span><span class="p">:</span>
+            <span class="n">rescaled_input_parameters</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">new_draws_features</span><span class="p">)</span>
+
+        <span class="c1"># Evaluate detection probabilities</span>
+        <span class="k">if</span> <span class="n">jitted</span><span class="p">:</span>
+            <span class="n">p_det_predictions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">p_det_emulator</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">new_draws_features</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p_det_predictions</span> <span class="o">=</span> <span class="n">p_det_emulator</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">rescaled_input_parameters</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">new_draws</span><span class="p">[</span><span class="s1">&#39;p_det&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_det_predictions</span>
+        <span class="n">min_new_pdet</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">p_det_predictions</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">min_new_pdet</span> <span class="o">&lt;</span> <span class="n">min_pdet</span><span class="p">:</span>
+            <span class="n">min_pdet</span> <span class="o">=</span> <span class="n">min_new_pdet</span>
+
+        <span class="c1"># Probabilistically label &quot;found&quot; injections according to the above probabilities</span>
+        <span class="n">random_draws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">new_draws</span><span class="p">))</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">new_draws</span><span class="p">[</span><span class="n">random_draws</span> <span class="o">&lt;</span> <span class="n">p_det_predictions</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Record found injections</span>
+        <span class="c1"># If these are our first ones, start a dataframe</span>
+        <span class="k">if</span> <span class="n">nfound</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">all_found</span> <span class="o">=</span> <span class="n">found</span>
+
+        <span class="c1"># Otherwise, append to existing data frame</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">all_found</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">all_found</span><span class="p">,</span> <span class="n">found</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Iterate counter</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">all_found</span><span class="p">),</span> <span class="n">min_new_pdet</span><span class="p">)</span>
+        <span class="n">nfound</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">found</span><span class="p">)</span>
+        <span class="n">nTrials</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">new_draws</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_found</span><span class="p">,</span> <span class="n">nTrials</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -28,6 +28,6 @@ https://github.com/tcallister/pdet/
    making-figures
    training-the-network
    hierarchical-inference
-
+   modules
 
 
