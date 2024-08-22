@@ -10,6 +10,7 @@ Welcome to learning-p-det's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+   getting-started
    making-figures
    training-the-network
    hierarchical-inference
