@@ -11,6 +11,7 @@ mv Zenodo/NSBH_semianalytic.npy ../input/
 mv Zenodo/endo3_bbhpop-LIGO-T2100113-v12.hdf5 ../input/
 mv Zenodo/endo3_bnspop-LIGO-T2100113-v12.hdf5 ../input/
 mv Zenodo/endo3_nsbhpop-LIGO-T2100113-v12.hdf5 ../input/
+mv Zenodo/sampleDict_FAR_1_in_1_yr.pickle ../input/
 
 # Move popsummary results to top level data/ folder
 mv Zenodo/popsummary_standardInjections.h5 .
