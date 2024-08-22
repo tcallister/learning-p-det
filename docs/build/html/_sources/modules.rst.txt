@@ -10,3 +10,5 @@ Modules
    getData
    population_model
    prep_injections
+   training_routines
+   utilities

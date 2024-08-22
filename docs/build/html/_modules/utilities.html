@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utilities &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utilities</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utilities</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.utils</span> <span class="kn">import</span> <span class="n">shuffle</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">default_rng</span>
+
+
+<div class="viewcode-block" id="generalized_Xp"><a class="viewcode-back" href="../utilities.html#utilities.generalized_Xp">[docs]</a><span class="k">def</span> <span class="nf">generalized_Xp</span><span class="p">(</span><span class="n">s1x</span><span class="p">,</span> <span class="n">s1y</span><span class="p">,</span> <span class="n">s2x</span><span class="p">,</span> <span class="n">s2y</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to compute generalized effective precessing spin parameter,</span>
+<span class="sd">    as defined in Gerosa+ 2021 (https://arxiv.org/abs/2011.11948)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s1x : `float` or `np.array`</span>
+<span class="sd">        x-component of the primary&#39;s spin</span>
+<span class="sd">    s1y : `float` or `np.array`</span>
+<span class="sd">        y-component of the primary&#39;s spin</span>
+<span class="sd">    s2x : `float` or `np.array`</span>
+<span class="sd">        x-component of the secondary&#39;s spin</span>
+<span class="sd">    s2y : `float` or `np.array`</span>
+<span class="sd">        y-component of the secondary&#39;s spin</span>
+<span class="sd">    q : `float` or `np.array`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Xp : `float` or `np.array`</span>
+<span class="sd">        Generalized precessing spin parameter</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Get total in-plane component spins</span>
+    <span class="n">Xp1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s1x</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="n">s1y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">Xp2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">s2x</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="n">s2y</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Cosine of angle between component spins, after projection onto the</span>
+    <span class="c1"># orbital plane</span>
+    <span class="n">Xp1_Xp2_cos_dphi</span> <span class="o">=</span> <span class="p">(</span><span class="n">s1x</span><span class="o">*</span><span class="n">s2x</span> <span class="o">+</span> <span class="n">s1y</span><span class="o">*</span><span class="n">s2y</span><span class="p">)</span>
+
+    <span class="c1"># Compute precessing spin parameter</span>
+    <span class="n">Xp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Xp1</span><span class="o">**</span><span class="mi">2</span>
+                 <span class="o">+</span> <span class="p">((</span><span class="mf">3.</span><span class="o">+</span><span class="mf">4.</span><span class="o">*</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">4.</span><span class="o">+</span><span class="mf">3.</span><span class="o">*</span><span class="n">q</span><span class="p">)</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="n">Xp2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+                 <span class="o">+</span> <span class="mf">2.</span><span class="o">*</span><span class="n">q</span><span class="o">*</span><span class="p">(</span><span class="mf">3.</span><span class="o">+</span><span class="mf">4.</span><span class="o">*</span><span class="n">q</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mf">4.</span><span class="o">+</span><span class="mf">3.</span><span class="o">*</span><span class="n">q</span><span class="p">)</span><span class="o">*</span><span class="n">Xp1_Xp2_cos_dphi</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Xp</span></div>
+
+
+<div class="viewcode-block" id="ANNaverage"><a class="viewcode-back" href="../utilities.html#utilities.ANNaverage">[docs]</a><span class="k">class</span> <span class="nc">ANNaverage</span><span class="p">():</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class used as a wrapper around a list of individually-trained neural</span>
+<span class="sd">    networks. Can be used to average the predictions across these individual</span>
+<span class="sd">    networks to increase overall accuracy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ann_list</span><span class="p">):</span>
+
+        <span class="c1"># List of `tf.keras.models.Sequential` neural networks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ann_list</span> <span class="o">=</span> <span class="n">ann_list</span>
+
+<div class="viewcode-block" id="ANNaverage.predict"><a class="viewcode-back" href="../utilities.html#utilities.ANNaverage.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to compute predictions across the elements of `self.ann_list`</span>
+<span class="sd">        and return their average.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        params : `list`</span>
+<span class="sd">            Input parameters at which to predict outputs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        mean_predictions : `list`</span>
+<span class="sd">            Mean predictions, taken across `self.ann_list`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Compute list of predictions from individual networks, passing any</span>
+        <span class="c1"># additional arguments</span>
+        <span class="n">individual_predictions</span> \
+            <span class="o">=</span> <span class="p">[</span><span class="n">ann</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">ann</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ann_list</span><span class="p">]</span>
+
+        <span class="c1"># Compute and return mean!</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">individual_predictions</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="load_training_data"><a class="viewcode-back" href="../utilities.html#utilities.load_training_data">[docs]</a><span class="k">def</span> <span class="nf">load_training_data</span><span class="p">(</span>
+        <span class="n">data_directory</span><span class="p">,</span>
+        <span class="n">n_bbh</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_bns</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_nsbh</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_bbh_certain</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_bbh_hopeless</span><span class="o">=</span><span class="mi">60000</span><span class="p">,</span>
+        <span class="n">n_bns_certain</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_bns_hopeless</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_nsbh_certain</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_nsbh_hopeless</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">n_combined_hopeless</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span>
+        <span class="n">rng_key</span><span class="o">=</span><span class="mi">111</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to load, concatenate, and shuffle training and validation</span>
+<span class="sd">    data for use in neural network training.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_directory : `str`</span>
+<span class="sd">        Path to directory containing training data</span>
+<span class="sd">    n_bbh : `int`</span>
+<span class="sd">        Number of true LVK BBH injections (both found and missed) to include in</span>
+<span class="sd">        training set, following hopeless cut</span>
+<span class="sd">    n_bns : `int`</span>
+<span class="sd">        Number of true LVK BNS injections (both found and missed) to include in</span>
+<span class="sd">        training set, following hopeless cut</span>
+<span class="sd">    n_nsbh : `int`</span>
+<span class="sd">        Number of true LVK NSBH injections (both found and missed) to include</span>
+<span class="sd">        in training set, following hopeless cut</span>
+<span class="sd">    n_bbh_certain : `int`</span>
+<span class="sd">        Number of additional &quot;certain&quot; BBH injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_bbh_hopeless : `int`</span>
+<span class="sd">        Number of additional &quot;hopeless&quot; BBH injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_bns_certain : `int`</span>
+<span class="sd">        Number of additional &quot;certain&quot; BNS injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_bns_hopeless : `int`</span>
+<span class="sd">        Number of additional &quot;hopeless&quot; BNS injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_nsbh_certain : `int`</span>
+<span class="sd">        Number of additional &quot;certain&quot; NSBH injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_nsbh_hopeless : `int`</span>
+<span class="sd">        Number of additional &quot;hopeless&quot; NSBH injections to include in training</span>
+<span class="sd">        set</span>
+<span class="sd">    n_combined_hopeless : `int`</span>
+<span class="sd">        Number of additional &quot;hopeless&quot; auxiliary injections to include in</span>
+<span class="sd">        training set</span>
+<span class="sd">    rng_key : `int`</span>
+<span class="sd">        Random seed for reproducibility</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    train_data : `pd.DataFrame`</span>
+<span class="sd">        Training data, concatenated and shuffled</span>
+<span class="sd">    val_data : `pd.DataFrame`</span>
+<span class="sd">        Validation data, concatenated and shuffled</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">generator</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">(</span><span class="n">rng_key</span><span class="p">)</span>
+
+    <span class="c1"># Read injections and downsample</span>
+    <span class="n">bbh_train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/bbh_training_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bbh</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+    <span class="n">bns_train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/bns_training_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bns</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+    <span class="n">nsbh_train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/nsbh_training_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_nsbh</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/bbh_training_data.hdf&#39;.format(data_directory)).shape)</span>
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/bns_training_data.hdf&#39;.format(data_directory)).shape)</span>
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/nsbh_training_data.hdf&#39;.format(data_directory)).shape)</span>
+
+    <span class="c1"># Read pre-prepared validation sets</span>
+    <span class="n">bbh_val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/bbh_validation_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_bbh</span><span class="o">/</span><span class="mi">4</span><span class="p">),</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+    <span class="n">bns_val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/bns_validation_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_bns</span><span class="o">/</span><span class="mi">4</span><span class="p">),</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+    <span class="n">nsbh_val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/nsbh_validation_data.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">n_nsbh</span><span class="o">/</span><span class="mi">4</span><span class="p">),</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+
+    <span class="c1"># Concat together</span>
+    <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">bbh_train_data</span><span class="p">,</span> <span class="n">bns_train_data</span><span class="p">,</span> <span class="n">nsbh_train_data</span><span class="p">])</span>
+    <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">bbh_val_data</span><span class="p">,</span> <span class="n">bns_val_data</span><span class="p">,</span> <span class="n">nsbh_val_data</span><span class="p">])</span>
+
+    <span class="c1"># Read and split hopeless injections</span>
+    <span class="c1"># Hopeless BBH</span>
+    <span class="k">if</span> <span class="n">n_bbh_hopeless</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bbh_hopeless_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bbh-hopeless-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bbh_hopeless</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+        <span class="n">bbh_hopeless_data</span><span class="p">,</span> <span class="n">val_bbh_hopeless_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">bbh_hopeless_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">bbh_hopeless_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_bbh_hopeless_data</span><span class="p">])</span>
+
+    <span class="c1"># Hopeless BNS</span>
+    <span class="k">if</span> <span class="n">n_bns_hopeless</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">bns_hopeless_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bns-hopeless-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bns_hopeless</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+        <span class="n">bns_hopeless_data</span><span class="p">,</span> <span class="n">val_bns_hopeless_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">bns_hopeless_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">bns_hopeless_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_bns_hopeless_data</span><span class="p">])</span>
+
+    <span class="c1"># Hopeless NSBH</span>
+    <span class="k">if</span> <span class="n">n_nsbh_hopeless</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">nsbh_hopeless_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-nsbh-hopeless-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_nsbh_hopeless</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+        <span class="n">nsbh_hopeless_data</span><span class="p">,</span> <span class="n">val_nsbh_hopeless_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">nsbh_hopeless_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">nsbh_hopeless_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_nsbh_hopeless_data</span><span class="p">])</span>
+
+    <span class="c1"># Hopeless auxiliary</span>
+    <span class="k">if</span> <span class="n">n_combined_hopeless</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">combined_hopeless_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-combined-hopeless-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_combined_hopeless</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+        <span class="n">combined_hopeless_data</span><span class="p">,</span> <span class="n">val_combined_hopeless_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">combined_hopeless_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">combined_hopeless_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_combined_hopeless_data</span><span class="p">])</span>
+
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/rpo3-bbh-hopeless-formatted.hdf&#39;.format(data_directory)).shape)</span>
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/rpo3-bns-hopeless-formatted.hdf&#39;.format(data_directory)).shape)</span>
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/rpo3-nsbh-hopeless-formatted.hdf&#39;.format(data_directory)).shape)</span>
+    <span class="c1">#print(pd.read_hdf(&#39;{0}/rpo3-combined-hopeless-formatted.hdf&#39;.format(data_directory)).shape)</span>
+
+    <span class="c1"># Read and split certain injections</span>
+    <span class="c1"># Certain BBH</span>
+    <span class="k">if</span> <span class="n">n_bbh_certain</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+        <span class="n">bbh_certain_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bbh-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bbh_certain</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+
+        <span class="c1"># Remove odd events</span>
+        <span class="n">to_clip</span> <span class="o">=</span> <span class="p">(</span><span class="n">bbh_certain_data</span><span class="o">.</span><span class="n">chirp_mass_detector</span> <span class="o">&lt;</span> <span class="mf">10.</span><span class="o">*</span><span class="n">bbh_certain_data</span><span class="o">.</span><span class="n">luminosity_distance</span><span class="o">**</span><span class="mf">1.2</span><span class="p">)</span>
+        <span class="n">bbh_certain_data</span> <span class="o">=</span> <span class="n">bbh_certain_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">bbh_certain_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">to_clip</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Split and add to training data</span>
+        <span class="n">bbh_certain_data</span><span class="p">,</span> <span class="n">val_bbh_certain_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">bbh_certain_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">bbh_certain_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_bbh_certain_data</span><span class="p">])</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bbh-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bns-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-nsbh-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="c1"># Certain BNS</span>
+    <span class="k">if</span> <span class="n">n_bns_certain</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+        <span class="n">bns_certain_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-bns-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_bns_certain</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+
+        <span class="c1"># Split and add to training data</span>
+        <span class="n">bns_certain_data</span><span class="p">,</span> <span class="n">val_bns_certain_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">bns_certain_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">bns_certain_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_bns_certain_data</span><span class="p">])</span>
+
+    <span class="c1"># Certain NSBH</span>
+    <span class="k">if</span> <span class="n">n_nsbh_certain</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+        <span class="n">nsbh_certain_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_hdf</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/rpo3-nsbh-certain-formatted.hdf&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_directory</span><span class="p">))</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">n_nsbh_certain</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="p">)</span>
+
+        <span class="c1"># Remove odd events</span>
+        <span class="n">to_clip</span> <span class="o">=</span> <span class="p">(</span><span class="n">nsbh_certain_data</span><span class="o">.</span><span class="n">chirp_mass_detector</span> <span class="o">&lt;</span> <span class="p">(</span><span class="n">nsbh_certain_data</span><span class="o">.</span><span class="n">luminosity_distance</span><span class="o">/</span><span class="mf">0.1</span><span class="p">)</span><span class="o">**</span><span class="mf">1.4</span><span class="p">)</span>
+        <span class="n">nsbh_certain_data</span> <span class="o">=</span> <span class="n">nsbh_certain_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">nsbh_certain_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">to_clip</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Split and add to training data</span>
+        <span class="n">nsbh_certain_data</span><span class="p">,</span> <span class="n">val_nsbh_certain_data</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span>
+            <span class="n">nsbh_certain_data</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">train_data</span><span class="p">,</span> <span class="n">nsbh_certain_data</span><span class="p">])</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">val_data</span><span class="p">,</span> <span class="n">val_nsbh_certain_data</span><span class="p">])</span>
+
+    <span class="c1"># Shuffle</span>
+    <span class="n">train_data</span> <span class="o">=</span> <span class="n">shuffle</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span>
+                         <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+    <span class="n">val_data</span> <span class="o">=</span> <span class="n">shuffle</span><span class="p">(</span><span class="n">val_data</span><span class="p">,</span>
+                       <span class="n">random_state</span><span class="o">=</span><span class="n">generator</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">1024</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+
+    <span class="n">load_training_data</span><span class="p">(</span><span class="n">data_directory</span><span class="o">=</span><span class="s1">&#39;/project/kicp/tcallister/learning-p-det-data/input_data/&#39;</span><span class="p">,</span> <span class="n">rng_key</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>training_routines &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">training_routines</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for training_routines</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.keras</span> <span class="kn">import</span> <span class="n">initializers</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span> <span class="nn">draw_new_injections</span> <span class="kn">import</span> <span class="n">draw_new_injections</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">set_floatx</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NegativeLogLikelihood"><a class="viewcode-back" href="../training_routines.html#training_routines.NegativeLogLikelihood">[docs]</a><span class="k">class</span> <span class="nc">NegativeLogLikelihood</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">Loss</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom loss function implementing binomial detection likelihood model, with</span>
+<span class="sd">    a prior penalizing large predicted detection probabilities.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">2.</span><span class="o">/</span><span class="mf">3.</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize an instance of the loss function.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        beta : `float`</span>
+<span class="sd">            Parameter specifying the degree of penalty applied to large</span>
+<span class="sd">            predicted detection probabilities. Larger values correspond to</span>
+<span class="sd">            steeper penalty. Default is `2/3`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Class instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+<div class="viewcode-block" id="NegativeLogLikelihood.call"><a class="viewcode-back" href="../training_routines.html#training_routines.NegativeLogLikelihood.call">[docs]</a>    <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to evaluate loss, given true found/missed labels and</span>
+<span class="sd">        predicted detection probabilities.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        y_true : `list`</span>
+<span class="sd">            True missed/found labels (0/1 respectively)</span>
+<span class="sd">        y_pred : `list`</span>
+<span class="sd">            Corresponding set of predicted detection probabilities</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loss : `tensorflow.Tensor`</span>
+<span class="sd">            Negative log likelihood of given predictions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Binomial log likelihood (aka cross-entropy loss fucntion)</span>
+        <span class="n">log_ps</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>
+                          <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y_pred</span><span class="p">),</span>
+                          <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">y_pred</span><span class="p">))</span>
+
+        <span class="c1"># Return with prior penalizing large probabilities</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">log_ps</span><span class="p">)</span> \
+            <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="o">*</span><span class="n">y_pred</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="NegativeLogLikelihoodAugmented"><a class="viewcode-back" href="../training_routines.html#training_routines.NegativeLogLikelihoodAugmented">[docs]</a><span class="k">def</span> <span class="nf">NegativeLogLikelihoodAugmented</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span>
+            <span class="n">efficiency_mismatches</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="mf">0.</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Custom loss function implementing binomial likelihood model and penalizing</span>
+<span class="sd">    large detection probabilities. Further includes terms grading the network</span>
+<span class="sd">    on its integrated detection efficiencies predicted for an arbitrary number</span>
+<span class="sd">    of reference populations.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    y_true : `list`</span>
+<span class="sd">        True missed/found labels (0/1 respectively)</span>
+<span class="sd">    y_pred : `list`</span>
+<span class="sd">        Corresponding set of predicted detection probabilities</span>
+<span class="sd">    beta : `float`</span>
+<span class="sd">        Inverse temperature penalty on large predicted detection probabilities</span>
+<span class="sd">    efficiency_mismatches : `tf.Tensor`</span>
+<span class="sd">        Standardized residuals between expected and predicted detection</span>
+<span class="sd">        efficiences for an arbitrary number of reference populations. These</span>
+<span class="sd">        should be calculated as `(f_pred - f_true)/std`, where `f_pred` is</span>
+<span class="sd">        the predicted efficiency using the network, `f_true` is the target</span>
+<span class="sd">        efficiency, and the expected root-variance `std` is calculable using</span>
+<span class="sd">        the number `N` of events used to compute `f_pred`. Default `[0]`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    loss : `tensorflow.Tensor`</span>
+<span class="sd">        Negative log likelihood of given predictions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Binomial log likelihood (aka cross-entropy loss function)</span>
+    <span class="n">log_ps</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>
+                      <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y_pred</span><span class="p">),</span>
+                      <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="n">y_pred</span><span class="p">))</span>
+    <span class="n">term1</span> <span class="o">=</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">log_ps</span><span class="p">)</span>
+
+    <span class="c1"># Negative log likelihood of predicted detection efficiencies</span>
+    <span class="c1"># Provided values should be pre-standardized:</span>
+    <span class="c1"># (Predicted-Actual)**2/(Expected variance)</span>
+    <span class="n">term2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">efficiency_mismatches</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+
+    <span class="c1"># Return with prior penalizing large probabilities</span>
+    <span class="n">term3</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">beta</span><span class="o">*</span><span class="n">y_pred</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">term1</span><span class="o">+</span><span class="n">term2</span><span class="o">+</span><span class="n">term3</span></div>
+
+
+<div class="viewcode-block" id="scheduler"><a class="viewcode-back" href="../training_routines.html#training_routines.scheduler">[docs]</a><span class="k">def</span> <span class="nf">scheduler</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">lr</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Example scheduler to reduce learning rate over the course of network</span>
+<span class="sd">    training.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    epoch : `int`</span>
+<span class="sd">        Training epoch</span>
+<span class="sd">    lr : `float`</span>
+<span class="sd">        Current learning rate</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lr : `float`</span>
+<span class="sd">        New learning rate</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">epoch</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">lr</span><span class="o">*</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">lr</span></div>
+
+
+<div class="viewcode-block" id="NeuralNetworkWrapper"><a class="viewcode-back" href="../training_routines.html#training_routines.NeuralNetworkWrapper">[docs]</a><span class="k">class</span> <span class="nc">NeuralNetworkWrapper</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper class used to create and train a neural network Pdet emulator.</span>
+<span class="sd">    Used instead of `build_ann` in order to use a more complex loss function</span>
+<span class="sd">    (e.g. `NegativeLogLikelihoodAugmented`) that requires use of a manual</span>
+<span class="sd">    training loop, rather than more automated tensorflow training tools.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">input_shape</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+                 <span class="n">layer_width</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+                 <span class="n">hidden_layers</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                 <span class="n">loss</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+                 <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;ReLU&#39;</span><span class="p">,</span>
+                 <span class="n">leaky_alpha</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+                 <span class="n">output_bias</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">addDerived</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">feature_names</span><span class="o">=</span><span class="p">[]):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiates and returns a `NeuralNetworkWrapper` object, containing</span>
+<span class="sd">        a prepared neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : `int`</span>
+<span class="sd">            Dimensionality of input feature space (default 9)</span>
+<span class="sd">        layer_width : `int`</span>
+<span class="sd">            Number of neurons in each hidden layer (default 64)</span>
+<span class="sd">        hidden_layers : `int`</span>
+<span class="sd">            Number of hidden layers (default 3)</span>
+<span class="sd">        loss : `func` or `None`</span>
+<span class="sd">            Loss function for use in training. If `None`, defaults to</span>
+<span class="sd">            `NegativeLogLikelihood`. Default is `None`.</span>
+<span class="sd">        lr : `float`</span>
+<span class="sd">            Learning rate (default 1e-3)</span>
+<span class="sd">        activation : `str`</span>
+<span class="sd">            One of `ReLU`, `LeakyReLU`, or `ELU`. Default `ReLU`.</span>
+<span class="sd">        leaky_alpha : `float`</span>
+<span class="sd">            Parameter specifying LeakyReLU activation function (default 0.01)</span>
+<span class="sd">        output_bias : `float`</span>
+<span class="sd">            Bias to include in output layer (default 0)</span>
+<span class="sd">        addDerived : `func`</span>
+<span class="sd">            Function, if needed, to add derived data columns to input data.</span>
+<span class="sd">            Defaults to the identity, such that no derived data is added.</span>
+<span class="sd">        feature_names : `list`</span>
+<span class="sd">            Parameters to extract from data for use in neural network.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Store parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span> <span class="o">=</span> <span class="n">input_shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer_width</span> <span class="o">=</span> <span class="n">layer_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_layers</span> <span class="o">=</span> <span class="n">hidden_layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">loss</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">=</span> <span class="n">lr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">=</span> <span class="n">activation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">leaky_alpha</span> <span class="o">=</span> <span class="n">leaky_alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_bias</span> <span class="o">=</span> <span class="n">output_bias</span>
+
+        <span class="c1"># Instantiate neural network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_model</span><span class="p">()</span>
+
+        <span class="c1"># Store specified function for data augmentation and list of</span>
+        <span class="c1"># features to extract</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addDerived</span> <span class="o">=</span> <span class="n">addDerived</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">feature_names</span>
+
+        <span class="c1"># Prepare attributes for storing training/testing data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_data</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># List to hold auxiliary datasets used to incorporate</span>
+        <span class="c1"># predicted integrated detection efficiencies during training</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Training history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_loss_history</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="NeuralNetworkWrapper.build_model"><a class="viewcode-back" href="../training_routines.html#training_routines.NeuralNetworkWrapper.build_model">[docs]</a>    <span class="k">def</span> <span class="nf">build_model</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to construct and return an ANN object, to be subsequently</span>
+<span class="sd">        trained or into which pre-trained weights can be loaded.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ann : `tf.keras.model.Sequential()`</span>
+<span class="sd">            Compiled ANN object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Set up chosen properties</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">==</span> <span class="s1">&#39;ReLU&#39;</span><span class="p">:</span>
+            <span class="n">activation</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ReLU</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">==</span> <span class="s1">&#39;LeakyReLU&#39;</span><span class="p">:</span>
+            <span class="n">activation</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">LeakyReLU</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">leaky_alpha</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">activation</span> <span class="o">==</span> <span class="s1">&#39;ELU&#39;</span><span class="p">:</span>
+            <span class="n">activation</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ELU</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Activation not recognized!&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+        <span class="c1"># Initialize a sequential ANN object and create an initial hidden layer</span>
+        <span class="n">ann</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">Sequential</span><span class="p">()</span>
+        <span class="n">ann</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+                <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_width</span><span class="p">,</span>
+                <span class="n">input_shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,),</span>
+                <span class="n">kernel_initializer</span><span class="o">=</span><span class="n">initializers</span><span class="o">.</span><span class="n">RandomNormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">0.01</span><span class="p">),</span>
+                <span class="n">bias_initializer</span><span class="o">=</span><span class="n">initializers</span><span class="o">.</span><span class="n">Zeros</span><span class="p">()))</span>
+
+        <span class="c1"># Add activation function</span>
+        <span class="n">ann</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">activation</span><span class="p">)</span>
+
+        <span class="c1"># Add the specified number of additional hidden layers, each with</span>
+        <span class="c1"># another activation</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hidden_layers</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+
+            <span class="n">ann</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+                    <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">layer_width</span><span class="p">,</span>
+                    <span class="n">kernel_initializer</span><span class="o">=</span><span class="n">initializers</span><span class="o">.</span><span class="n">RandomNormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">0.01</span><span class="p">),</span>
+                    <span class="n">bias_initializer</span><span class="o">=</span><span class="n">initializers</span><span class="o">.</span><span class="n">Zeros</span><span class="p">()))</span>
+
+            <span class="n">ann</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">activation</span><span class="p">)</span>
+
+        <span class="c1"># Prepare output bias</span>
+        <span class="n">output_bias</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">initializers</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_bias</span><span class="p">)</span>
+
+        <span class="c1"># Final output layer with sigmoid activation</span>
+        <span class="c1"># This provides a hard cap on predicted probabilities, accounting for</span>
+        <span class="c1"># time in which no interferometers were on</span>
+        <span class="k">def</span> <span class="nf">scaled_sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span><span class="mf">1.</span><span class="o">-</span><span class="mf">0.0589</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">ann</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                                      <span class="n">bias_initializer</span><span class="o">=</span><span class="n">output_bias</span><span class="p">,</span>
+                                      <span class="n">activation</span><span class="o">=</span><span class="n">scaled_sigmoid</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">ann</span></div>
+
+<div class="viewcode-block" id="NeuralNetworkWrapper.prepare_data"><a class="viewcode-back" href="../training_routines.html#training_routines.NeuralNetworkWrapper.prepare_data">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                     <span class="n">batch_size</span><span class="p">,</span>
+                     <span class="n">train_data_external</span><span class="p">,</span>
+                     <span class="n">val_data_external</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prepare the training and validation data to be used during training.</span>
+<span class="sd">        Accepts training and validation datasets, and uses `self.addDerived`</span>
+<span class="sd">        and `self.feature_names`, provided at the time of class creation,</span>
+<span class="sd">        to augment the provided data, extract relevant features, split into</span>
+<span class="sd">        input and output columns, and rescale inputs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        batch_size : `int`</span>
+<span class="sd">            Specifies batch size to be used during network training</span>
+<span class="sd">        train_data_external : `numpy.ndarray`</span>
+<span class="sd">            Array of data for neural network during training</span>
+<span class="sd">        val_data_external : `numpy.ndarray`</span>
+<span class="sd">            Array of validation data for neural network during testing</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Make copy of data for safety</span>
+        <span class="n">train_data</span> <span class="o">=</span> <span class="n">train_data_external</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">val_data</span> <span class="o">=</span> <span class="n">val_data_external</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Add derived parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addDerived</span><span class="p">(</span><span class="n">train_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addDerived</span><span class="p">(</span><span class="n">val_data</span><span class="p">)</span>
+
+        <span class="c1"># Split off inputs and outputs</span>
+        <span class="n">train_input</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">train_output</span> <span class="o">=</span> <span class="n">train_data</span><span class="p">[</span><span class="s1">&#39;detected&#39;</span><span class="p">][:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">val_input</span> <span class="o">=</span> <span class="n">val_data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">val_output</span> <span class="o">=</span> <span class="n">val_data</span><span class="p">[</span><span class="s1">&#39;detected&#39;</span><span class="p">][:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+        <span class="c1"># Define quantile transformer and scale inputs</span>
+        <span class="c1"># Store input scaler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">train_input</span><span class="p">)</span>
+        <span class="n">train_input_scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">train_input</span><span class="p">)</span>
+        <span class="n">val_input_scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">val_input</span><span class="p">)</span>
+
+        <span class="c1"># Create a tf.data.Dataset for the training data</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_tensor_slices</span><span class="p">((</span><span class="n">train_input_scaled</span><span class="p">,</span>
+                                                            <span class="n">train_output</span><span class="p">))</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">buffer_size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">))</span>
+        <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">train_dataset</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+
+        <span class="c1"># Create a tf.data.Dataset for the validation data</span>
+        <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_tensor_slices</span><span class="p">((</span><span class="n">val_input_scaled</span><span class="p">,</span>
+                                                          <span class="n">val_output</span><span class="p">))</span>
+        <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">val_dataset</span><span class="o">.</span><span class="n">batch</span><span class="p">(</span><span class="n">batch_size</span><span class="p">)</span>
+
+        <span class="c1"># Save as attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="n">train_dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_data</span> <span class="o">=</span> <span class="n">val_dataset</span>
+
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="NeuralNetworkWrapper.draw_from_reference_population"><a class="viewcode-back" href="../training_routines.html#training_routines.NeuralNetworkWrapper.draw_from_reference_population">[docs]</a>    <span class="k">def</span> <span class="nf">draw_from_reference_population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                       <span class="n">parameter_dict</span><span class="p">,</span>
+                                       <span class="n">n_draws</span><span class="p">,</span>
+                                       <span class="n">target_efficiency</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to draw from a reference population of synthetic data, to be</span>
+<span class="sd">        used for auxiliary training data. Specifically, the loss function used</span>
+<span class="sd">        during training will be further penalized based on the network&#39;s</span>
+<span class="sd">        predicted detection efficiencies integrated over this reference</span>
+<span class="sd">        population, compared to the expected truth.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        parameter_dict : `dict`</span>
+<span class="sd">            Dictionary of population parameters to be used for drawing random</span>
+<span class="sd">            compact binaries</span>
+<span class="sd">        n_draws : `int`</span>
+<span class="sd">            Number of synthetic samples to draw</span>
+<span class="sd">        target_efficiency : `float`</span>
+<span class="sd">            Target recovery efficiency for the synthetic samples</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Draw new samples, extract training features, and transform</span>
+        <span class="n">new_draws</span> <span class="o">=</span> <span class="n">draw_new_injections</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="n">n_draws</span><span class="p">,</span> <span class="o">**</span><span class="n">parameter_dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addDerived</span><span class="p">(</span><span class="n">new_draws</span><span class="p">)</span>
+        <span class="n">new_draws</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">new_draws</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">])</span>
+
+        <span class="c1"># Expected standard deviation in recovered draws</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">target_efficiency</span><span class="o">/</span><span class="n">n_draws</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Expected std:&quot;</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span>
+
+        <span class="c1"># Save draws and target recovery efficiency to class&#39; auxiliary data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">new_draws</span><span class="p">),</span>
+                                    <span class="n">target_efficiency</span><span class="p">,</span>
+                                    <span class="n">std</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="NeuralNetworkWrapper.train_model"><a class="viewcode-back" href="../training_routines.html#training_routines.NeuralNetworkWrapper.train_model">[docs]</a>    <span class="k">def</span> <span class="nf">train_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epochs</span><span class="p">,</span> <span class="n">beta</span><span class="p">):</span>
+
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Class method that implements network training.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        epochs : `int`</span>
+<span class="sd">            Number of training epochs</span>
+<span class="sd">        beta : `float`</span>
+<span class="sd">            Parameter penalizing large predicted detection probabilities.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Define optimizer</span>
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr</span><span class="p">)</span>
+
+        <span class="c1"># Define early stopping parameters</span>
+        <span class="n">best_val_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>    <span class="c1"># Current best validation loss</span>
+        <span class="n">best_epoch</span> <span class="o">=</span> <span class="mi">0</span>                  <span class="c1"># Epoch of best val loss</span>
+        <span class="n">best_weights</span> <span class="o">=</span> <span class="kc">None</span>             <span class="c1"># Weights at best val loss</span>
+        <span class="n">wait</span> <span class="o">=</span> <span class="mi">0</span>                        <span class="c1"># Number of epochs since best loss</span>
+        <span class="n">patience</span> <span class="o">=</span> <span class="mi">10</span>                   <span class="c1"># Number of epochs to wait</span>
+
+        <span class="c1"># Loop across training epochs</span>
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+
+            <span class="c1"># Loop across epochs</span>
+            <span class="n">epoch_losses</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">step</span><span class="p">,</span> <span class="p">(</span><span class="n">x_batch_train</span><span class="p">,</span> <span class="n">y_batch_train</span><span class="p">)</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="p">),</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="p">)):</span>
+
+                <span class="c1"># Prepare gradient</span>
+                <span class="k">with</span> <span class="n">tf</span><span class="o">.</span><span class="n">GradientTape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+
+                    <span class="c1"># Compute predicted detection probabilities on training</span>
+                    <span class="c1"># data</span>
+                    <span class="n">y_pred_train</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_batch_train</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span><span class="p">:</span>
+
+                        <span class="c1"># Compute predicted integrated detection probabilities</span>
+                        <span class="c1"># across any reference populations, as produced by</span>
+                        <span class="c1"># `draw_from_reference_population`</span>
+                        <span class="n">efficiencies</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">([</span>
+                            <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">auxiliary_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">training</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="k">for</span> <span class="n">auxiliary_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span>
+                            <span class="p">])</span>
+
+                        <span class="c1"># Compute standardized efficiency mismatches</span>
+                        <span class="n">target_efficiencies</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="n">auxiliary_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">auxiliary_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+                        <span class="n">std_efficiencies</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="n">auxiliary_data</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">auxiliary_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">auxiliary_data</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+                        <span class="n">efficiency_mismatch</span> <span class="o">=</span> <span class="p">(</span><span class="n">efficiencies</span><span class="o">-</span><span class="n">target_efficiencies</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">std_efficiencies</span><span class="o">**</span><span class="mi">2</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">efficiency_mismatch</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">([</span><span class="mf">0.</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;float64&#39;</span><span class="p">)</span>
+
+                    <span class="c1"># Compute the loss using both the training predictions and</span>
+                    <span class="c1"># the efficiency predictions</span>
+                    <span class="n">loss_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">y_batch_train</span><span class="p">,</span> <span class="n">y_pred_train</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">efficiency_mismatch</span><span class="p">)</span>
+
+                <span class="c1"># Compute gradient, update weights, and save loss</span>
+                <span class="n">grads</span> <span class="o">=</span> <span class="n">tape</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">loss_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">trainable_weights</span><span class="p">)</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">apply_gradients</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">grads</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">trainable_weights</span><span class="p">))</span>
+                <span class="n">epoch_losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss_value</span><span class="p">)</span>
+
+            <span class="c1"># Compute mean loss and validation loss at the end of the epoch</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">epoch_losses</span><span class="p">)</span>
+            <span class="n">val_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">training</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">beta</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">])</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">loss_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">val_loss_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_loss</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Epoch: </span><span class="si">{}</span><span class="s2">, Loss: </span><span class="si">{}</span><span class="s2">, Val Loss: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">val_loss</span><span class="p">))</span>
+
+            <span class="c1"># Check for early stopping</span>
+            <span class="k">if</span> <span class="n">val_loss</span> <span class="o">&lt;</span> <span class="n">best_val_loss</span><span class="p">:</span>
+                <span class="n">best_epoch</span> <span class="o">=</span> <span class="n">epoch</span>
+                <span class="n">best_val_loss</span> <span class="o">=</span> <span class="n">val_loss</span>
+                <span class="n">best_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">()</span>
+                <span class="n">wait</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">wait</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">wait</span> <span class="o">&gt;=</span> <span class="n">patience</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Early stopping, reverting to best epoch: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">best_epoch</span><span class="p">))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">best_weights</span><span class="p">)</span>
+                    <span class="k">break</span>  <span class="c1"># Early stopping condition met</span></div></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

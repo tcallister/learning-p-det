@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>training_routines module &mdash; learning-p-det  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="utilities module" href="utilities.html" />
+    <link rel="prev" title="prep_injections module" href="prep_injections.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            learning-p-det
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="making-figures.html">Figure generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="training-the-network.html">Training the network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical-inference.html">Hierarchical Inference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Modules</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="diagnostics.html">diagnostics module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="draw_new_injections.html">draw_new_injections module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="format_training_data.html">format_training_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getData.html">getData module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="population_model.html">population_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="prep_injections.html">prep_injections module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">training_routines module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#training_routines.NegativeLogLikelihood"><code class="docutils literal notranslate"><span class="pre">NegativeLogLikelihood</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#training_routines.NegativeLogLikelihood.call"><code class="docutils literal notranslate"><span class="pre">NegativeLogLikelihood.call()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#training_routines.NegativeLogLikelihoodAugmented"><code class="docutils literal notranslate"><span class="pre">NegativeLogLikelihoodAugmented()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#training_routines.NeuralNetworkWrapper"><code class="docutils literal notranslate"><span class="pre">NeuralNetworkWrapper</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.build_model"><code class="docutils literal notranslate"><span class="pre">NeuralNetworkWrapper.build_model()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.draw_from_reference_population"><code class="docutils literal notranslate"><span class="pre">NeuralNetworkWrapper.draw_from_reference_population()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.prepare_data"><code class="docutils literal notranslate"><span class="pre">NeuralNetworkWrapper.prepare_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.train_model"><code class="docutils literal notranslate"><span class="pre">NeuralNetworkWrapper.train_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#training_routines.scheduler"><code class="docutils literal notranslate"><span class="pre">scheduler()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="utilities.html">utilities module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">learning-p-det</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Modules</a></li>
+      <li class="breadcrumb-item active">training_routines module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/training_routines.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-training_routines">
+<span id="training-routines-module"></span><h1>training_routines module<a class="headerlink" href="#module-training_routines" title="Permalink to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="training_routines.NegativeLogLikelihood">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">training_routines.</span></span><span class="sig-name descname"><span class="pre">NegativeLogLikelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.6666666666666666</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NegativeLogLikelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NegativeLogLikelihood" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Loss</span></code></p>
+<p>Custom loss function implementing binomial detection likelihood model, with
+a prior penalizing large predicted detection probabilities.</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__call__</span></code>(y_true, y_pred[, sample_weight])</p></td>
+<td><p>Invokes the <cite>Loss</cite> instance.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#training_routines.NegativeLogLikelihood.call" title="training_routines.NegativeLogLikelihood.call"><code class="xref py py-obj docutils literal notranslate"><span class="pre">call</span></code></a>(y_true, y_pred)</p></td>
+<td><p>Function to evaluate loss, given true found/missed labels and predicted detection probabilities.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_config</span></code>(config)</p></td>
+<td><p>Instantiates a <cite>Loss</cite> from its config (output of <cite>get_config()</cite>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_config</span></code>()</p></td>
+<td><p>Returns the config dictionary for a <cite>Loss</cite> instance.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="training_routines.NegativeLogLikelihood.call">
+<span class="sig-name descname"><span class="pre">call</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NegativeLogLikelihood.call"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NegativeLogLikelihood.call" title="Permalink to this definition"></a></dt>
+<dd><p>Function to evaluate loss, given true found/missed labels and
+predicted detection probabilities.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>y_true</strong><span class="classifier"><cite>list</cite></span></dt><dd><p>True missed/found labels (0/1 respectively)</p>
+</dd>
+<dt><strong>y_pred</strong><span class="classifier"><cite>list</cite></span></dt><dd><p>Corresponding set of predicted detection probabilities</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>loss</strong><span class="classifier"><cite>tensorflow.Tensor</cite></span></dt><dd><p>Negative log likelihood of given predictions.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="training_routines.NegativeLogLikelihoodAugmented">
+<span class="sig-prename descclassname"><span class="pre">training_routines.</span></span><span class="sig-name descname"><span class="pre">NegativeLogLikelihoodAugmented</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">efficiency_mismatches=&lt;tf.Tensor:</span> <span class="pre">shape=(1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=float64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numpy=array([0.])&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NegativeLogLikelihoodAugmented"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NegativeLogLikelihoodAugmented" title="Permalink to this definition"></a></dt>
+<dd><p>Custom loss function implementing binomial likelihood model and penalizing
+large detection probabilities. Further includes terms grading the network
+on its integrated detection efficiencies predicted for an arbitrary number
+of reference populations.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>y_true</strong><span class="classifier"><cite>list</cite></span></dt><dd><p>True missed/found labels (0/1 respectively)</p>
+</dd>
+<dt><strong>y_pred</strong><span class="classifier"><cite>list</cite></span></dt><dd><p>Corresponding set of predicted detection probabilities</p>
+</dd>
+<dt><strong>beta</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>Inverse temperature penalty on large predicted detection probabilities</p>
+</dd>
+<dt><strong>efficiency_mismatches</strong><span class="classifier"><cite>tf.Tensor</cite></span></dt><dd><p>Standardized residuals between expected and predicted detection
+efficiences for an arbitrary number of reference populations. These
+should be calculated as <cite>(f_pred - f_true)/std</cite>, where <cite>f_pred</cite> is
+the predicted efficiency using the network, <cite>f_true</cite> is the target
+efficiency, and the expected root-variance <cite>std</cite> is calculable using
+the number <cite>N</cite> of events used to compute <cite>f_pred</cite>. Default <cite>[0]</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>loss</strong><span class="classifier"><cite>tensorflow.Tensor</cite></span></dt><dd><p>Negative log likelihood of given predictions.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="training_routines.NeuralNetworkWrapper">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">training_routines.</span></span><span class="sig-name descname"><span class="pre">NeuralNetworkWrapper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_shape=9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_width=64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_layers=3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loss=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr=0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation='ReLU'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaky_alpha=0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_bias=0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">addDerived=&lt;function</span> <span class="pre">NeuralNetworkWrapper.&lt;lambda&gt;&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_names=[]</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NeuralNetworkWrapper"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NeuralNetworkWrapper" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Wrapper class used to create and train a neural network Pdet emulator.
+Used instead of <cite>build_ann</cite> in order to use a more complex loss function
+(e.g. <cite>NegativeLogLikelihoodAugmented</cite>) that requires use of a manual
+training loop, rather than more automated tensorflow training tools.</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.build_model" title="training_routines.NeuralNetworkWrapper.build_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_model</span></code></a>()</p></td>
+<td><p>Function to construct and return an ANN object, to be subsequently trained or into which pre-trained weights can be loaded.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.draw_from_reference_population" title="training_routines.NeuralNetworkWrapper.draw_from_reference_population"><code class="xref py py-obj docutils literal notranslate"><span class="pre">draw_from_reference_population</span></code></a>(...)</p></td>
+<td><p>Function to draw from a reference population of synthetic data, to be used for auxiliary training data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.prepare_data" title="training_routines.NeuralNetworkWrapper.prepare_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prepare_data</span></code></a>(batch_size, ...)</p></td>
+<td><p>Prepare the training and validation data to be used during training.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#training_routines.NeuralNetworkWrapper.train_model" title="training_routines.NeuralNetworkWrapper.train_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">train_model</span></code></a>(epochs, beta)</p></td>
+<td><p>Class method that implements network training.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="training_routines.NeuralNetworkWrapper.build_model">
+<span class="sig-name descname"><span class="pre">build_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NeuralNetworkWrapper.build_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NeuralNetworkWrapper.build_model" title="Permalink to this definition"></a></dt>
+<dd><p>Function to construct and return an ANN object, to be subsequently
+trained or into which pre-trained weights can be loaded.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>None</strong></dt><dd></dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>ann</strong><span class="classifier"><cite>tf.keras.model.Sequential()</cite></span></dt><dd><p>Compiled ANN object</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="training_routines.NeuralNetworkWrapper.draw_from_reference_population">
+<span class="sig-name descname"><span class="pre">draw_from_reference_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_draws</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_efficiency</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NeuralNetworkWrapper.draw_from_reference_population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NeuralNetworkWrapper.draw_from_reference_population" title="Permalink to this definition"></a></dt>
+<dd><p>Function to draw from a reference population of synthetic data, to be
+used for auxiliary training data. Specifically, the loss function used
+during training will be further penalized based on the network’s
+predicted detection efficiencies integrated over this reference
+population, compared to the expected truth.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>parameter_dict</strong><span class="classifier"><cite>dict</cite></span></dt><dd><p>Dictionary of population parameters to be used for drawing random
+compact binaries</p>
+</dd>
+<dt><strong>n_draws</strong><span class="classifier"><cite>int</cite></span></dt><dd><p>Number of synthetic samples to draw</p>
+</dd>
+<dt><strong>target_efficiency</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>Target recovery efficiency for the synthetic samples</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="training_routines.NeuralNetworkWrapper.prepare_data">
+<span class="sig-name descname"><span class="pre">prepare_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data_external</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val_data_external</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NeuralNetworkWrapper.prepare_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NeuralNetworkWrapper.prepare_data" title="Permalink to this definition"></a></dt>
+<dd><p>Prepare the training and validation data to be used during training.
+Accepts training and validation datasets, and uses <cite>self.addDerived</cite>
+and <cite>self.feature_names</cite>, provided at the time of class creation,
+to augment the provided data, extract relevant features, split into
+input and output columns, and rescale inputs.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>batch_size</strong><span class="classifier"><cite>int</cite></span></dt><dd><p>Specifies batch size to be used during network training</p>
+</dd>
+<dt><strong>train_data_external</strong><span class="classifier"><cite>numpy.ndarray</cite></span></dt><dd><p>Array of data for neural network during training</p>
+</dd>
+<dt><strong>val_data_external</strong><span class="classifier"><cite>numpy.ndarray</cite></span></dt><dd><p>Array of validation data for neural network during testing</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>None</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="training_routines.NeuralNetworkWrapper.train_model">
+<span class="sig-name descname"><span class="pre">train_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epochs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#NeuralNetworkWrapper.train_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.NeuralNetworkWrapper.train_model" title="Permalink to this definition"></a></dt>
+<dd><p>Class method that implements network training.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>epochs</strong><span class="classifier"><cite>int</cite></span></dt><dd><p>Number of training epochs</p>
+</dd>
+<dt><strong>beta</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>Parameter penalizing large predicted detection probabilities.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="training_routines.scheduler">
+<span class="sig-prename descclassname"><span class="pre">training_routines.</span></span><span class="sig-name descname"><span class="pre">scheduler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/training_routines.html#scheduler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#training_routines.scheduler" title="Permalink to this definition"></a></dt>
+<dd><p>Example scheduler to reduce learning rate over the course of network
+training.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>epoch</strong><span class="classifier"><cite>int</cite></span></dt><dd><p>Training epoch</p>
+</dd>
+<dt><strong>lr</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>Current learning rate</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>lr</strong><span class="classifier"><cite>float</cite></span></dt><dd><p>New learning rate</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="prep_injections.html" class="btn btn-neutral float-left" title="prep_injections module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="utilities.html" class="btn btn-neutral float-right" title="utilities module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, T. Callister.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
