@@ -334,7 +334,7 @@ def get_inj_efficiency(alpha,
 
 
 # Preemptively load semianalytic injection results
-semianalytic = np.load('BBH_semianalytic.npy',allow_pickle=True)[()]
+semianalytic = np.load('./../input/BBH_semianalytic.npy',allow_pickle=True)[()]
 semianalytic['obs_snr']['dVdz'] = 4.*np.pi*Planck15.differential_comoving_volume(semianalytic['obs_snr']['z']).to(u.Gpc**3/u.sr).value
 semianalytic['expected_snr']['dVdz'] = 4.*np.pi*Planck15.differential_comoving_volume(semianalytic['expected_snr']['z']).to(u.Gpc**3/u.sr).value
 

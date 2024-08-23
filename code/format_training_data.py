@@ -232,6 +232,10 @@ def format_and_save_hopeless(hfile, output, hkey='events'):
 
 if __name__== "__main__":
 
+    format_real_injection_data('./../input/endo3_imbhpop-LIGO-T2100113-v12.hdf5',
+                        './../data/training_data/imbh_')
+
+    """
     # Process real injections
     format_real_injection_data('./../input/endo3_bbhpop-LIGO-T2100113-v12.hdf5',
                         './../data/training_data/bbh_')
@@ -260,3 +264,4 @@ if __name__== "__main__":
                             './../data/training_data/rpo3-nsbh-certain-formatted.hdf')
     format_and_save_certain('./../data/training_data/rpo3-bns-certain.hdf',
                             './../data/training_data/rpo3-bns-certain-formatted.hdf')
+    """

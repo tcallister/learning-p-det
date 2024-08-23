@@ -104,8 +104,16 @@ To set up this environment, do the following:</p>
 This environment specifically contains GPU-compatible installations of jax and numpyro, which we strongly recommend when performing <a class="reference external" href="https://tcallister.github.io/learning-p-det/build/html/hierarchical-inference.html">hierarchical inference</a>.
 Although this environment is suitable for use on the University of Chicago’s Midway3 cluster, it may not work with different computing resources.</p>
 </div>
-<p><strong>Step 3</strong>. Finally, we need to manually install the <cite>popsummary</cite> package:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--ignore-requires-python<span class="w"> </span>git+https://git.ligo.org/christian.adamcewicz/popsummary
+<p><strong>Step 3</strong>. Figure regeneration will also require a copy of the <code class="docutils literal notranslate"><span class="pre">pdet</span></code> repository, preferable cloned into the same location as the <code class="docutils literal notranslate"><span class="pre">learning-p-det</span></code> repository.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/tcallister/pdet
+$<span class="w"> </span>ls
+learning-p-det/
+pdet/
+</pre></div>
+</div>
+<p><strong>Step 4</strong>. Finally, we need to manually install the <code class="docutils literal notranslate"><span class="pre">popsummary</span></code> package:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>conda<span class="w"> </span>activate<span class="w"> </span>learning-p-det
+$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--ignore-requires-python<span class="w"> </span>git+https://git.ligo.org/christian.adamcewicz/popsummary
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">--ignore-requires-python</span></code> allows us to brute-force ignore conflicting python versions.</p>

@@ -30,10 +30,20 @@ You can deactivate the environment using :code:`conda deactivate`.
    This environment specifically contains GPU-compatible installations of jax and numpyro, which we strongly recommend when performing `hierarchical inference <https://tcallister.github.io/learning-p-det/build/html/hierarchical-inference.html>`_.
    Although this environment is suitable for use on the University of Chicago's Midway3 cluster, it may not work with different computing resources.
 
-**Step 3**. Finally, we need to manually install the `popsummary` package:
+**Step 3**. Figure regeneration will also require a copy of the ``pdet`` repository, preferable cloned into the same location as the ``learning-p-det`` repository.
 
 .. code-block:: bash
 
+   $ git clone https://github.com/tcallister/pdet
+   $ ls
+   learning-p-det/
+   pdet/
+
+**Step 4**. Finally, we need to manually install the ``popsummary`` package:
+
+.. code-block:: bash
+
+    $ conda activate learning-p-det
     $ pip install --ignore-requires-python git+https://git.ligo.org/christian.adamcewicz/popsummary
 
 The ``--ignore-requires-python`` allows us to brute-force ignore conflicting python versions.
