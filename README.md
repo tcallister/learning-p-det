@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13362691.svg)](https://doi.org/10.5281/zenodo.13362691)
 [![DOI](https://zenodo.org/badge/615505108.svg)](https://zenodo.org/doi/10.5281/zenodo.13385581)
 
 # learning-p-det
