@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/615505108.svg)](https://zenodo.org/doi/10.5281/zenodo.13385581)
+
 # learning-p-det
 
 This repository holds code and data release products behind the paper "__A neural network emulator of the Advanced LIGO and Advanced Virgo selection function__" (arXiv:2408.XXXXX)
