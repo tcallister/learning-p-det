@@ -6,7 +6,7 @@
 Welcome to learning-p-det's documentation!
 ==========================================
 
-This page details the code used to produce the results presented in *A neural network emulator of the Advanced LIGO and Advanced Virgo selection function*, which can be accessed at
+This page details the code used to produce the results presented in *A neural network emulator of the Advanced LIGO and Advanced Virgo selection function* (`arXiv: 2408.16828 <https://www.arxiv.org/abs/2408.16828>`_), which can be accessed at
 
 https://github.com/tcallister/learning-p-det/
 
